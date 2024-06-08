@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    volumes:
+      - pgdata-prod:/var/lib/postgresql/data
+    secrets:
+      - postgres_password
+    healthcheck:
+      test: pg_isready -U postgres
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: 
+      context: backend
+      target: prod
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DATABASE: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: 
+      context: frontend
+      target: prod
+    depends_on:
+      - backend
+
+  nginx:
+    build: 
+      context: nginx
+      target: prod
+    ports:
+      - "443:443"
+    secrets:
+      - source: nginx_key
+        target: /etc/nginx/ssl/nginx.key
+      - source: nginx_cert
+        target: /etc/nginx/ssl/nginx.crt
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  pgdata-prod:
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+  nginx_cert:
+    file: ./secrets/nginx.crt
+  nginx_key:
+    file: ./secrets/nginx.key

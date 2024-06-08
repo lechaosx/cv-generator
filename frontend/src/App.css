@@ -1,0 +1,15 @@
+body {
+	font-family: Arial, sans-serif;
+	text-align: justify;
+	width: clamp(200px, 50%, 1000px);
+}
+
+.container {
+	display: flex;
+	flex-direction: row;
+}
+
+.main-content {
+	flex: 1;
+	padding: 40px;
+}
