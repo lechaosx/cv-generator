@@ -4,14 +4,15 @@ import './App.css';
 const ProgressBar = ({ percentage }) => (
 	<div className="progress-bar">
 		<div className="progress-bar-fill" style={{ width: `${percentage}%` }} />
+		{percentage} %
 	</div>
 );
 
 const Skill = ({ name, percentage }) => (
-	<p className="skill">
-		{name}
+	<div className="skill">
+		<strong>{name}</strong>
 		<ProgressBar percentage={percentage}/>
-	</p>
+	</div>
 );
 
 const Detail = ({name, value}) => (
@@ -88,11 +89,11 @@ function App() {
 					<h1>{data.name}</h1>
 					<h2>{data.position}</h2>
 				</div>
-				<div>
-					<p>{data.location}</p>
-					<p>{data.phone}</p>
-					<p>{data.email}</p>
-				</div>
+				<ul className="contact-list">
+					<li>{data.location}</li>
+					<li>{data.phone}</li>
+					<li>{data.email}</li>
+				</ul>
 			</header>
 			<aside>
 				<CvSection title="About Me">
