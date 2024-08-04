@@ -1,28 +1,63 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
 
-const ProgressBar = ({ percentage }) => {
+const ProgressBar = ({ percentage }) => (
+	<div className="progress-bar">
+		<div className="progress-bar-fill" style={{ width: `${percentage}%` }} />
+	</div>
+);
+
+const Skill = ({ name, percentage }) => (
+	<p className="skill">
+		{name}
+		<ProgressBar percentage={percentage}/>
+	</p>
+);
+
+const Detail = ({name, value}) => (
+	<div className="detail">
+		<strong>{name}</strong>
+		{value}
+	</div>
+);
+
+const TimelineEntry = ({ children }) => {
+	const childArray = React.Children.toArray(children);
+
+	if (childArray.length !== 4) {
+		throw new Error('TimelineEntry expects exactly 4 children.');
+	}
+
+	const [first, second, third, fourth] = childArray;
+
 	return (
-		<div className="progress-bar">
-			<div className="progress-bar-fill" style={{ width: `${percentage}%` }} />
-		</div>
+		<>
+			<div className="left">
+				<strong>{first}</strong>
+				<div>{second}</div>
+			</div>
+			<div className="right">
+				<strong>{third}</strong>
+				<p>{fourth}</p>
+			</div>
+		</>
 	);
 };
 
-const Skill = ({ name, percentage }) => {
-	return (
-		<div className="skill">{name}<ProgressBar percentage={percentage}/></div>
-	);
-};
+const Timeline = ({ children }) => (
+	<div className="timeline">
+		{children}
+	</div>
+);
 
-const Detail = ({name, value}) => {
-	return (
-		<div className="detail">
-			<b>{name}</b>
-			{value}
+const CvSection = ({ title, children }) => (
+	<section>
+		<h3 className="section-header">{title}</h3>
+		<div className="section-content">
+			{children}
 		</div>
-	);
-};
+	</section>
+)
 
 function App() {
 	const [data, setData] = useState('Loading...');
@@ -46,7 +81,7 @@ function App() {
 	return (
 		<div className="container">
 			<div>
-				<img src={data.photo} alt="Profile" />
+				<img src={data.photo} alt="Profile" width="400"/>
 			</div>
 			<header>
 				<div>
@@ -59,56 +94,50 @@ function App() {
 					<p>{data.email}</p>
 				</div>
 			</header>
-			<aside className="sidebar">
-				<section>
-					<h3>About Me</h3>
+			<aside>
+				<CvSection title="About Me">
 					<p>{data.description}</p>
-				</section>
-				<section>
-					<h3>Personal Details</h3>
+				</CvSection>
+				<CvSection title="Personal Details">
 					<Detail name="Birth" value={`${data.birth?.month}/${data.birth?.year}`}/>
 					<Detail name="Nationality" value={data.nationality}/>
 					<Detail name="Marital status" value={data.status}/>
-				</section>
-				<section>
-					<h3>Skills</h3>
+				</CvSection>
+				<CvSection title="Skills">
 					{data.skills?.map(skill => (<Skill name={skill.name} percentage={skill.level}/>))}
-				</section>
-				<section>
-					<h3>Interests</h3>
+				</CvSection>
+				<CvSection title="Interests">
 					{data.interests?.join(' · ')}
-				</section>
-				<section>
-					<h3>Connect</h3>
+				</CvSection>
+				<CvSection title="Connect">
 					<a href={data.github} target="_blank" rel="noopener noreferrer">GitHub</a> · <a href={data.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
-				</section>
+				</CvSection>
 			</aside>
-			<main className="main-content">
-				<section>
-					<h3>Work Experience</h3>
-					<div className="timeline">
-						{data.experience?.map((job, index) => (
-							<div>
-								<h4>{job.title}</h4>
-								<p>{job.company}</p>
-								<p>{job.start.month}/{job.start.year} - {job.end ? `${job.end.month}/${job.end.year}` : 'Present'}</p>
-								<p>{job.description}</p>
-							</div>
+			<main>
+				<CvSection title="Work Experience">
+					<Timeline>
+						{data.experience?.map((job) => (
+							<TimelineEntry>
+								{job.company}
+								{`${job.start.month}/${job.start.year} - ${job.end ? `${job.end.month}/${job.end.year}` : 'present'}`}
+								{job.title}
+								{job.description}
+							</TimelineEntry>
 						))}
-					</div>
-				</section>
-				<section>
-					<h3>Education</h3>
-					{data.education?.map((edu, index) => (
-						<div key={index}>
-							<h4>{edu.title}</h4>
-							<p>{edu.institution}</p>
-							<p>{edu.subinstitution}</p>
-							<p>Graduated: {edu.end.year}</p>
-							<p>{edu.description}</p>
-						</div>
-					))}
-				</section>
+					</Timeline>
+				</CvSection>
+				<CvSection title="Education">
+					<Timeline>
+						{data.education?.map((edu) => (
+							<TimelineEntry>
+								{edu.institution}
+								{<>{edu.subinstitution}<br/>{edu.end.year}</>}
+								{edu.title}
+								{edu.description}
+							</TimelineEntry>
+						))}
+					</Timeline>
+				</CvSection>
 			</main>
 		</div>
 	);
