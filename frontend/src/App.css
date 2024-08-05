@@ -6,7 +6,8 @@
 	grid-template-columns: 1fr 2fr;
 	grid-template-rows: auto auto;
 	text-align: justify;
-	max-width: 100vh;
+	hyphens: auto;
+	width: 100vh;
 	margin: auto;
 
 	> * {
