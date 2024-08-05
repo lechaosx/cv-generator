@@ -90,19 +90,14 @@ function App() {
 					<h2>{data.position}</h2>
 				</div>
 				<ul className="contact-list">
-					<li>{data.location}</li>
-					<li>{data.phone}</li>
-					<li>{data.email}</li>
+					<li className="location">{data.location}</li>
+					<li className="phone">{data.phone}</li>
+					<li className="mail">{data.email}</li>
 				</ul>
 			</header>
 			<aside>
 				<CvSection title="About Me">
 					<p>{data.description}</p>
-				</CvSection>
-				<CvSection title="Personal Details">
-					<Detail name="Birth" value={`${data.birth?.month}/${data.birth?.year}`}/>
-					<Detail name="Nationality" value={data.nationality}/>
-					<Detail name="Marital status" value={data.status}/>
 				</CvSection>
 				<CvSection title="Skills">
 					{data.skills?.map(skill => (<Skill name={skill.name} percentage={skill.level}/>))}
