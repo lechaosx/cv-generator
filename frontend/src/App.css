@@ -65,6 +65,7 @@
 
 .section-header {
 	font-family: var(--condensed-font);
+	font-size: 1.17em;
 	text-transform: uppercase;
 	border-bottom: 1px solid;
 	margin: 0 -40px 0 0;
@@ -84,19 +85,29 @@ header {
 		flex: 0 0 33.33%;
 	}
 
-	h1 {
+	.title {
 		font-family: var(--condensed-font);
-		text-transform: uppercase;
+		font-weight: bold;
 		color: var(--dark);
-		font-size: 250%;
+		font-size: 2.5em;
 		margin: 0;
 	}
 
-	h2 {
+	h1 {
 		font-family: var(--condensed-font);
+		font-weight: bold;
+		text-transform: uppercase;
+		color: var(--dark);
+		font-size: 2.5em;
+		margin: 0;
+	}
+
+	.position {
+		font-family: var(--condensed-font);
+		font-weight: bold;
 		text-transform: uppercase;
 		color: var(--light);
-		font-size: 150%;
+		font-size: 1.5em;
 		margin: 0;
 	}
 }

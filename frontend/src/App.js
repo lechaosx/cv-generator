@@ -53,7 +53,7 @@ const Timeline = ({ children }) => (
 
 const CvSection = ({ title, children }) => (
 	<section>
-		<h3 className="section-header">{title}</h3>
+		<h2 className="section-header">{title}</h2>
 		<div className="section-content">
 			{children}
 		</div>
@@ -86,8 +86,9 @@ function App() {
 			</div>
 			<header>
 				<div>
+					<div className="title">{data.title}</div>
 					<h1>{data.name}</h1>
-					<h2>{data.position}</h2>
+					<div className="position">{data.position}</div>
 				</div>
 				<ul className="contact-list">
 					<li className="location">{data.location}</li>
