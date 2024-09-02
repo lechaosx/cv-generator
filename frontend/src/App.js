@@ -15,13 +15,6 @@ const Skill = ({ name, percentage }) => (
 	</div>
 );
 
-const Detail = ({name, value}) => (
-	<div className="detail">
-		<strong>{name}</strong>
-		{value}
-	</div>
-);
-
 const TimelineEntry = ({ children }) => {
 	const childArray = React.Children.toArray(children);
 
@@ -80,11 +73,11 @@ function App() {
 	document.querySelector("link[rel~='icon']").href = data.photo;
 
 	return (
-		<div className="container">
-			<div>
+		<main>
+			<div class="photo">
 				<img src={data.photo} alt="Profile" width="400"/>
 			</div>
-			<header>
+			<div class="main-info">
 				<div>
 					<div className="title">{data.title}</div>
 					<h1>{data.name}</h1>
@@ -95,8 +88,8 @@ function App() {
 					<li className="phone">{data.phone}</li>
 					<li className="mail">{data.email}</li>
 				</ul>
-			</header>
-			<aside>
+			</div>
+			<div class="additional-info">
 				<CvSection title="About Me">
 					<p>{data.description}</p>
 				</CvSection>
@@ -107,16 +100,19 @@ function App() {
 					{data.interests?.join(' · ')}
 				</CvSection>
 				<CvSection title="Connect">
-					<a href={data.github} target="_blank" rel="noopener noreferrer">GitHub</a> · <a href={data.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+					<div className="connect">
+						<a className="github" href={`https://${data.github}`}>{data.github}</a>
+						<a className="linkedin" href={`https://${data.linkedin}`}>{data.linkedin}</a>
+					</div>
 				</CvSection>
-			</aside>
-			<main>
+			</div>
+			<div class="timelines">
 				<CvSection title="Work Experience">
 					<Timeline>
 						{data.experience?.map((job) => (
 							<TimelineEntry>
 								{job.company}
-								{`${job.start.month}/${job.start.year} - ${job.end ? `${job.end.month}/${job.end.year}` : 'present'}`}
+								{`${job.start.month}/${job.start.year} – ${job.end ? `${job.end.month}/${job.end.year}` : 'present'}`}
 								{job.title}
 								{job.description}
 							</TimelineEntry>
@@ -135,8 +131,8 @@ function App() {
 						))}
 					</Timeline>
 				</CvSection>
-			</main>
-		</div>
+			</div>
+		</main>
 	);
 }
 

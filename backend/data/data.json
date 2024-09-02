@@ -52,7 +52,7 @@
 				"month": "4",
 				"year": "2021"
 			},
-			"description": "Engineering data structures for spatial query accelerati on. Implementing mechanisms for task parallelism that allows safe interaction with a thread-unsafe environment. Researching algorithms for robust mesh booleans. Developing new platform-independent build architecture for existing codebase based on modern CMake and Conan."
+			"description": "Engineering data structures for spatial query acceleration. Implementing mechanisms for task parallelism that allows safe interaction with a thread-unsafe environment. Researching algorithms for robust mesh booleans. Developing new platform-independent build architecture for existing codebase based on modern CMake and Conan."
 		},
 		{
 			"title": "Researcher",

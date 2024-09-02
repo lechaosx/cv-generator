@@ -1,34 +1,31 @@
-.container {
+:root {
 	--dark: #283649;
 	--light: #9c7843;
+	--white: #ffffff;
+	--black: #000000;
+}
 
+main {
 	display: grid;
 	grid-template-columns: 1fr 2fr;
-	grid-template-rows: auto auto;
 	text-align: justify;
 	hyphens: auto;
-	width: 100vh;
+	max-width: 60rem;
 	margin: auto;
 
 	> * {
-		padding-left: 40px;
-		padding-right: 40px;
+		padding-left: 2.5rem;
+		padding-right: 2.5rem;
 	}
 
 	> :nth-child(-n + 2) {
-		padding-top: 40px;
-		padding-bottom: 40px;
+		padding-top: 2.5rem;
+		padding-bottom: 2.5rem;
 	}
+}
 
-	> :nth-child(2n + 1) {
-		background-color: var(--dark);
-		color: white;
-	}
-
-	> :nth-child(2n) {
-		background-color: white;
-		color: black;
-	}
+.photo {
+	background-color: var(--dark);
 
 	img {
 		width: 100%;
@@ -40,7 +37,7 @@
 	li {
 		padding: 5px 0 5px 0;
 		border-bottom: 1px solid var(--light);
-		margin-right: -40px;
+		margin-right: -2.5rem;
 	}
 
 	li:last-child {
@@ -69,7 +66,7 @@
 	font-size: 1.17em;
 	text-transform: uppercase;
 	border-bottom: 1px solid;
-	margin: 0 -40px 0 0;
+	margin: 0 -2.5rem 0 0;
 }
 
 .section-content {
@@ -77,7 +74,10 @@
 	margin-bottom: 20px;
 }
 
-header {
+.main-info {
+	background-color: var(--white);
+	color: var(--black);
+	
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -113,46 +113,58 @@ header {
 	}
 }
 
-main {
-	.section-header {
-		color: black;
-		border-bottom-color: black;
-	}
+.timelines {
+	background-color: var(--white);
+	color: var(--black);
 }
 
-aside {
-	color: white;
-
-	a {
-		color: white;
-	}
+.additional-info {
+	background-color: var(--dark);
+	color: var(--white);
 
 	.section-header {
 		color: var(--light);
-		border-bottom-color: white;
+		border-bottom-color: var(--white);
+	}
+}
+
+.connect {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.5rem;
+
+	a {
+		color: var(--white);
+	}
+
+	a::before {
+		padding-right: 0.5rem;
+	}
+
+	.github::before {
+		content: url("icons/github.svg");
+	}
+	
+	.linkedin::before {
+		content: url("icons/linkedin.svg");
 	}
 }
 
 .skill {
 	margin-top: 10px;
 	margin-bottom: 10px;
+
 	strong {
 		text-transform: uppercase;
 		font-weight: normal;
 	}
 }
 
-.detail {
-	display: flex;
-	flex-wrap: wrap;
-	flex-direction: row;
-	justify-content: space-between;
-}
-
 .progress-bar {
 	width: 100%;
 	height: 5px;
-	background-color: white;
+	background-color: var(--white);
 	overflow: hidden;
 }
 
@@ -197,3 +209,57 @@ aside {
 	padding-left: 20px;
 }
 
+@media (max-width: 80rem) {
+	main {
+		grid-template-columns: 1fr;
+	}
+
+	.photo {
+		background-color: var(--dark);
+	}
+
+	.main-info {
+		background-color: var(--dark);
+		color: var(--white);
+
+		.title, h1 {
+			color: var(--white);
+		}
+
+		.position {
+			color: var(--light);
+		}
+	}
+
+	.additional-info {
+		background-color: var(--dark);
+		color: var(--white);
+
+		.section-header {
+			color: var(--light);
+			border-bottom-color: var(--white);
+		}
+
+		a {
+			color: var(--white);
+		}
+	}
+
+	.timelines {
+		background-color: var(--dark);
+		color: var(--white);
+
+		.section-header {
+			color: var(--light);
+			border-bottom-color: var(--white);
+		}
+	}
+
+	.contact-list {
+		color: var(--white);
+	}
+
+	.progress-bar {
+		background-color: var(--white);
+	}
+}
