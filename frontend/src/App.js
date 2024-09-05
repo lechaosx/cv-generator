@@ -54,19 +54,19 @@ const CvSection = ({ title, children }) => (
 )
 
 function App() {
-	const [data, setData] = useState('Loading...');
+	const [data, setData] = useState(null);
 
 	useEffect(() => {
-		fetch('/api/cv')
+		fetch('data.json')
 		.then(response => response.json())
 		.then(data => setData(data))
 		.catch(error => {
-			console.error('Error fetching data:', error);
-		  });
+			console.error('Error parsing data:', error);
+		});
 	}, []);
 
 	if (!data) {
-		return <div>Failed to fetch data...</div>;
+		return <div>Failed to read data...</div>;
 	}
 
 	document.title = data.name;
@@ -74,22 +74,22 @@ function App() {
 
 	return (
 		<main>
-			<div class="photo">
+			<div className="photo">
 				<img src={data.photo} alt="Profile" width="400"/>
 			</div>
-			<div class="main-info">
+			<div className="main-info">
 				<div>
 					<div className="title">{data.title}</div>
 					<h1>{data.name}</h1>
 					<div className="position">{data.position}</div>
 				</div>
 				<ul className="contact-list">
-					<li className="location">{data.location}</li>
-					<li className="phone">{data.phone}</li>
-					<li className="mail">{data.email}</li>
+					<li key="0" className="location">{data.location}</li>
+					<li key="1" className="phone">{data.phone}</li>
+					<li key="2" className="mail">{data.email}</li>
 				</ul>
 			</div>
-			<div class="additional-info">
+			<div className="additional-info">
 				<CvSection title="About Me">
 					<p>{data.description}</p>
 				</CvSection>
@@ -106,7 +106,7 @@ function App() {
 					</div>
 				</CvSection>
 			</div>
-			<div class="timelines">
+			<div className="timelines">
 				<CvSection title="Work Experience">
 					<Timeline>
 						{data.experience?.map((job) => (
