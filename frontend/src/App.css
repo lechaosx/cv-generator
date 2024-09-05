@@ -221,45 +221,57 @@ main {
 	.main-info {
 		background-color: var(--dark);
 		color: var(--white);
+	}
 
-		.title, h1 {
-			color: var(--white);
-		}
+	.main-info h1 {
+		color: var(--white);
+	}
 
-		.position {
-			color: var(--light);
-		}
+	.main-info .title {
+		color: var(--white);
+	}
+
+	.main-info .position {
+		color: var(--light);
 	}
 
 	.additional-info {
 		background-color: var(--dark);
 		color: var(--white);
+	}
 
-		.section-header {
-			color: var(--light);
-			border-bottom-color: var(--white);
-		}
+	.additional-info .section-header {
+		color: var(--light);
+		border-bottom-color: var(--white);
+	}
 
-		a {
-			color: var(--white);
-		}
+	.additional-info a {
+		color: var(--white);
 	}
 
 	.timelines {
 		background-color: var(--dark);
 		color: var(--white);
+	}
 
-		.section-header {
-			color: var(--light);
-			border-bottom-color: var(--white);
-		}
+	.timelines .section-header {
+		color: var(--light);
+		border-bottom-color: var(--white);
 	}
 
 	.contact-list {
 		color: var(--white);
 	}
 
+	.contact-list li {
+		margin-right: 0;
+	}
+
 	.progress-bar {
 		background-color: var(--white);
+	}
+
+	.section-header {
+		margin: 0;
 	}
 }

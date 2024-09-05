@@ -6,7 +6,7 @@
 	"email": "dr.dlabaja@gmail.com",
 	"location": "Brno, Královo Pole",
 	"photo": "https://media.licdn.com/dms/image/D4E03AQEBCuikzl3_fw/profile-displayphoto-shrink_800_800/0/1667673467302?e=1726099200&v=beta&t=ZZUrWfqwknpYLRHiQOdNTOkOLCnnWvif1Cf4JUHgojk",
-	"description": "Skilled software developer with a proven ability to analyze complex problems, propose a set of solutions along with their strengths and weaknesses, and implement the solutions according to the needs of the team. Proactive strategic thinker who can get things done.",
+	"description": "Skilled software engineer with a proven ability to analyze complex problems, propose a set of solutions along with their strengths and weaknesses, and implement the solutions according to the needs of the team. Proactive strategic thinker who can get things done.",
 	"skills": [
 		{
 			"name": "C++",
@@ -21,30 +21,44 @@
 			"level": "100"
 		},
 		{
-			"name": "Linux",
-			"level": "80"
-		},
-		{
-			"name": "Parallel Programming",
-			"level": "80"
-		},
-		{
-			"name": "Data Compression",
-			"level": "80"
-		},
-		{
-			"name": "English Language",
+			"name": "Python",
 			"level": "80"
 		},
 		{
 			"name": "Computer Graphics",
 			"level": "60"
+		},
+		{
+			"name": "C#",
+			"level": "60"
 		}
 	],
-	"interests": ["Bouldering", "3D Printing", "Cooking", "Hiking", "Music", "Coffee Science"],
+	"interests": ["Bouldering", "Running", "3D Printing", "Cooking", "Hiking", "Music", "Coffee Science"],
 	"github": "github.com/xdlaba02",
 	"linkedin": "linkedin.com/in/dlabajad",
 	"experience": [
+		{
+			"title": "Tech Lead",
+			"company": "Chyron",
+			"start": {
+				"month": "6",
+				"year": "2024"
+			},
+			"description": "Mentoring and aiding team members with technical knowledge and best practices. Defining the technical direction and architecture of the product, ensuring it aligns with business goals. Promoting healthy development practices, introducing agility into our processes with measurable positive outcomes. Research and experimentation with new technologies, encouraging innovation within the team. Management of the technical state of the product, making sure the development and operations processes are smooth. Communication with engineers, testers, and stakeholders regarding the technical state and future vision."
+		},
+		{
+			"title": "Senior Software Engineer",
+			"company": "Chyron",
+			"start": {
+				"month": "3",
+				"year": "2023"
+			},
+			"end": {
+				"month": "6",
+				"year": "2024"
+			},
+			"description": "Maintanance and renovation of 20 years old 10M LOC legacy codebase. Management of CI/CD pipelines, build systems and build environment. Decision making about future development processes, risk/reward analysis. Evaluation of existing & new code quality, code reviews. Management of technical debt, creation and maintenance of technical documentation."
+		},
 		{
 			"title": "Software Developer",
 			"company": "TESCAN 3DIM, s.r.o.",
@@ -52,7 +66,11 @@
 				"month": "4",
 				"year": "2021"
 			},
-			"description": "Engineering data structures for spatial query acceleration. Implementing mechanisms for task parallelism that allows safe interaction with a thread-unsafe environment. Researching algorithms for robust mesh booleans. Developing new platform-independent build architecture for existing codebase based on modern CMake and Conan."
+			"end": {
+				"month": "3",
+				"year": "2023"
+			},
+			"description": "Engineering of data structures for spatial query acceleration. Implementation of mechanisms for task parallelism that allows safe interaction within a thread-unsafe environment. Research of algorithms for robust mesh booleans. Development of new platform-independent build architecture for existing codebase based on modern CMake and Conan."
 		},
 		{
 			"title": "Researcher",
