@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import './App.css';
 
 const ProgressBar = ({ percentage }) => (
@@ -55,15 +56,21 @@ const CvSection = ({ title, children }) => (
 
 function App() {
 	const [data, setData] = useState(null);
+	
+	const [searchParams] = useSearchParams();
+
+	var url = searchParams.get('url');
 
 	useEffect(() => {
-		fetch('data.json')
+		const apiUrl = url ? `/api/extract?url=${encodeURIComponent(url)}` : '/api/extract';
+
+		fetch(apiUrl)
 		.then(response => response.json())
 		.then(data => setData(data))
 		.catch(error => {
 			console.error('Error parsing data:', error);
 		});
-	}, []);
+	}, [url]);
 
 	if (!data) {
 		return <div>Failed to read data...</div>;
@@ -79,7 +86,7 @@ function App() {
 			</div>
 			<div className="main-info">
 				<div>
-					<div className="title">{data.title}</div>
+					<div className="title">{data.title_before_name}</div>
 					<h1>{data.name}</h1>
 					<div className="position">{data.position}</div>
 				</div>
@@ -112,7 +119,7 @@ function App() {
 						{data.experience?.map((job) => (
 							<TimelineEntry>
 								{job.company}
-								{`${job.start.month}/${job.start.year} – ${job.end ? `${job.end.month}/${job.end.year}` : 'present'}`}
+								{`${job.start_month}/${job.start_year} – ${job.end_year ? `${job.end_month}/${job.end_year}` : 'present'}`}
 								{job.title}
 								{job.description}
 							</TimelineEntry>
@@ -124,7 +131,7 @@ function App() {
 						{data.education?.map((edu) => (
 							<TimelineEntry>
 								{edu.institution}
-								{<>{edu.subinstitution}<br/>{edu.end.year}</>}
+								{<>{edu.subinstitution}<br/>{edu.end_year}</>}
 								{edu.title}
 								{edu.description}
 							</TimelineEntry>

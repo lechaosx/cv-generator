@@ -1,38 +1,15 @@
 services:
-  db:
-    image: postgres:14-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    secrets:
-      - postgres_password
-    healthcheck:
-      test: pg_isready -U postgres
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   backend:
     build: 
       context: backend
       target: dev
     environment:
-      POSTGRES_HOST: db
-      POSTGRES_DATABASE: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      OPENAI_KEY: /run/secrets/openai_key
     secrets:
-      - postgres_password
+      - openai_key
     volumes:
-      - ./backend/alembic:/app/alembic
-      - ./backend/alembic.ini:/app/alembic.ini
       - ./backend/src:/app/src
       - ./backend/data:/app/data
-    depends_on:
-      db:
-        condition: service_healthy
 
   frontend:
     build: 
@@ -58,5 +35,5 @@ volumes:
   pgdata:
 
 secrets:
-  postgres_password:
-    file: ./secrets/postgres_password
+  openai_key:
+    file: ./secrets/openai_key
