@@ -73,7 +73,7 @@ function App() {
 	}, [url]);
 
 	if (!data) {
-		return <div>Failed to read data...</div>;
+		return <div className="loading">Crunching numbers...</div>;
 	}
 
 	document.title = data.name;

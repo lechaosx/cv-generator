@@ -5,6 +5,10 @@
 	--black: #000000;
 }
 
+.loading {
+	color: var(--white);
+}
+
 main {
 	display: grid;
 	grid-template-columns: 1fr 2fr;

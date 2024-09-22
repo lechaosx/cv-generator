@@ -1,7 +1,5 @@
 import os
-import typing
-import datetime
-import urllib.parse
+import urllib 
 
 import flask
 import openai
@@ -14,43 +12,41 @@ with open(os.getenv("OPENAI_KEY"), "r") as file:
 	openai.api_key = file.read().strip()
 
 class Skill(pydantic.BaseModel):
-	name: str
-	level: int
+	name: str  = pydantic.Field(description="The name of the skill.")
+	level: int = pydantic.Field(description="Proficiency level of the skill, as a percetage.")
 
 class Experience(pydantic.BaseModel):
-	title: str
-	company: str
-	start_month: str
-	start_year: str
-	end_month: str
-	end_year: str
-	description: str
-
+	title: str       = pydantic.Field(description="Job title.")
+	company: str     = pydantic.Field(description="Company full legal name.")
+	start_month: str = pydantic.Field(description="Starting month of employment. Use two decimal places, like 01 or 12.")
+	start_year: str  = pydantic.Field(description="Starting year of employment.")
+	end_month: str   = pydantic.Field(description="Ending month of employment. Use two decimal places, like 01 or 12. Make it empty string when not known.")
+	end_year: str    = pydantic.Field(description="Ending year of employment. Make it empty string when not known.")
+	description: str = pydantic.Field(description="Description of the job responsibilities and achievements. When not available or is too short, create a description from the input.")
 
 class Education(pydantic.BaseModel):
-	title: str
-	institution: str
-	subinstitution: str
-	end_year: str
-	description: str
-
+	title: str          = pydantic.Field(description="Degree title. Use wordy name, like 'Master's Degree' or such.")
+	institution: str    = pydantic.Field(description="Institution name, full university name.")
+	subinstitution: str = pydantic.Field(description="Sub-institution, faculty or department, if applicable.")
+	end_year: str       = pydantic.Field(description="Year of graduation. Make it empty string when not known.")
+	description: str    = pydantic.Field(description="Description of studies or achievements. When not available or is too short, try to come up with something from the data.")
 
 class PersonalInfo(pydantic.BaseModel):
-	title_before_name: str
-	name: str
-	title_after_name: str
-	position: str
-	phone: str
-	email: str
-	location: str
-	photo: str
-	description: str
-	skills: list[Skill]
-	interests: list[str]
-	github: str
-	linkedin: str
-	experience: list[Experience]
-	education: list[Education]
+	title_before_name: str       = pydantic.Field(description="Title before the person's name (Ing., Bc.). Leave empty when not available.")
+	name: str                    = pydantic.Field(description="Full name of the person.")
+	title_after_name: str        = pydantic.Field(description="Title after the person's name (PhD). Leave empty when not available.")
+	position: str                = pydantic.Field(description="Current job position. Leave empty if not known.")
+	phone: str                   = pydantic.Field(description="Contact phone number.")
+	email: str                   = pydantic.Field(description="Email address.")
+	location: str                = pydantic.Field(description="Current location (city, state).")
+	photo: str                   = pydantic.Field(description="URL of the profile photo.")
+	description: str             = pydantic.Field(description="A brief personal description or bio. Make something up if not directly available.")
+	skills: list[Skill]          = pydantic.Field(description="List of skills with proficiency levels. Extract 5 - 10 skills.")
+	interests: list[str]         = pydantic.Field(description="List of personal interests or hobbies.")
+	github: str                  = pydantic.Field(description="GitHub profile URL.")
+	linkedin: str                = pydantic.Field(description="LinkedIn profile URL.")
+	experience: list[Experience] = pydantic.Field(description="List of work experiences.")
+	education: list[Education]   = pydantic.Field(description="List of educational qualifications.")
 
 @app.route("/api/extract", methods=['GET'])
 def extract_personal_info():
