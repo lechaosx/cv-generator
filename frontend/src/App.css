@@ -5,6 +5,10 @@
 	--black: #000000;
 }
 
+* {
+	print-color-adjust: exact;
+}
+
 .loading {
 	color: var(--white);
 }
@@ -135,7 +139,6 @@ main {
 .connect {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
 	gap: 0.5rem;
 
 	a {
@@ -213,7 +216,7 @@ main {
 	padding-left: 20px;
 }
 
-@media (max-width: 80rem) {
+@media screen and (max-width: 60rem) {
 	main {
 		grid-template-columns: 1fr;
 	}
@@ -277,5 +280,11 @@ main {
 
 	.section-header {
 		margin: 0;
+	}
+}
+
+@media print {
+	main {
+		width: 60rem;
 	}
 }
