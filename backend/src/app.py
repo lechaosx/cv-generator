@@ -45,8 +45,8 @@ class PersonalInfo(pydantic.BaseModel):
 	description: str             = pydantic.Field(description="A brief personal description or bio. Make something up if not directly available.")
 	skills: list[Skill]          = pydantic.Field(description="List of skills with proficiency levels. Extract 5 - 10 skills.")
 	interests: list[str]         = pydantic.Field(description="List of personal interests or hobbies.")
-	github: str                  = pydantic.Field(description="GitHub profile URL.")
-	linkedin: str                = pydantic.Field(description="LinkedIn profile URL.")
+	github: str                  = pydantic.Field(description="GitHub profile URL without the http/https prefix.")
+	linkedin: str                = pydantic.Field(description="LinkedIn profile URL without the http/https prefix.")
 	experience: list[Experience] = pydantic.Field(description="List of work experiences.")
 	education: list[Education]   = pydantic.Field(description="List of educational qualifications.")
 
@@ -54,14 +54,15 @@ class PersonalInfo(pydantic.BaseModel):
 def extract_personal_info():
 
 	url = flask.request.args.get('url')
-
-	cache_key = f"cv_data:{url}" if url else "cv_data:local_file"
+	refresh = 'refresh' in flask.request.args
 
 	redis_client = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses=True)
+	cache_key = url if url else "cv.md"
 
-	cached_response = redis_client.get(cache_key)
-	if cached_response:
-		return cached_response, 200
+	if not refresh:
+		cached_response = redis_client.get(cache_key)
+		if cached_response:
+			return cached_response, 200
 
 	if url:
 		url = urllib.parse.unquote(flask.request.args.get('url'))
@@ -84,6 +85,6 @@ def extract_personal_info():
 
 	response_data = response.choices[0].message.parsed.model_dump(mode='json')
 
-	redis_client.set(cache_key, json.dumps(response_data), ex=60 * 60 * 24)
+	redis_client.set(cache_key, json.dumps(response_data), ex=60 * 60 * 24 * 7)
 
 	return response_data

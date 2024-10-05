@@ -8,6 +8,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+ENV PYTHONUNBUFFERED=1
+
 FROM base as dev
 
 CMD flask --app src/app.py --debug run --host=0.0.0.0

@@ -60,9 +60,20 @@ function App() {
 	const [searchParams] = useSearchParams();
 
 	var url = searchParams.get('url');
+	var refresh = searchParams.has('refresh');
 
 	useEffect(() => {
-		const apiUrl = url ? `/api/extract?url=${encodeURIComponent(url)}` : '/api/extract';
+		const params = new URLSearchParams();
+
+		if (url) {
+			params.append('url', url);
+		}
+
+		if (refresh) {
+			params.append('refresh', '');
+		}
+	
+		const apiUrl = `/api/extract?${params.toString()}`;
 
 		fetch(apiUrl)
 		.then(response => response.json())
@@ -70,7 +81,7 @@ function App() {
 		.catch(error => {
 			console.error('Error parsing data:', error);
 		});
-	}, [url]);
+	}, [url, refresh]);
 
 	if (!data) {
 		return <div className="loading">Crunching numbers...</div>;
