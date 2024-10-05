@@ -7,6 +7,8 @@ services:
       OPENAI_KEY: /run/secrets/openai_key
     secrets:
       - openai_key
+    depends_on:
+      - redis
 
   frontend:
     build: 
@@ -29,9 +31,14 @@ services:
     depends_on:
       - frontend
       - backend
+  
+  redis:
+    image: redis:latest
+    volumes:
+      - redis-data-prod:/data
 
 volumes:
-  pgdata-prod:
+  redis-data-prod:
 
 secrets:
   openai_key:

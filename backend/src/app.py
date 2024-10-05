@@ -1,7 +1,9 @@
 import os
 import urllib 
+import json
 
 import flask
+import redis
 import openai
 import pydantic
 import requests
@@ -50,7 +52,16 @@ class PersonalInfo(pydantic.BaseModel):
 
 @app.route("/api/extract", methods=['GET'])
 def extract_personal_info():
+
 	url = flask.request.args.get('url')
+
+	cache_key = f"cv_data:{url}" if url else "cv_data:local_file"
+
+	redis_client = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses=True)
+
+	cached_response = redis_client.get(cache_key)
+	if cached_response:
+		return cached_response, 200
 
 	if url:
 		url = urllib.parse.unquote(flask.request.args.get('url'))
@@ -71,4 +82,8 @@ def extract_personal_info():
 		response_format = PersonalInfo
 	)
 
-	return response.choices[0].message.parsed.model_dump(mode='json')
+	response_data = response.choices[0].message.parsed.model_dump(mode='json')
+
+	redis_client.set(cache_key, json.dumps(response_data), ex=60 * 60 * 24)
+
+	return response_data

@@ -10,6 +10,8 @@ services:
     volumes:
       - ./backend/src:/app/src
       - ./backend/data:/app/data
+    depends_on:
+      - redis
 
   frontend:
     build: 
@@ -31,8 +33,13 @@ services:
       - frontend
       - backend
 
+  redis:
+    image: redis:latest
+    volumes:
+      - redis-data:/data
+
 volumes:
-  pgdata:
+  redis-data:
 
 secrets:
   openai_key:
