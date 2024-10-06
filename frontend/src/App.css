@@ -1,24 +1,13 @@
-:root {
-	--dark: #283649;
-	--light: #9c7843;
-	--white: #ffffff;
-	--black: #000000;
-}
-
-* {
-	print-color-adjust: exact;
-}
-
 .loading {
 	color: var(--white);
 }
 
 main {
+	max-width: 60rem;
 	display: grid;
 	grid-template-columns: 1fr 2fr;
 	text-align: justify;
 	hyphens: auto;
-	max-width: 60rem;
 	margin: auto;
 
 	> * {
@@ -216,7 +205,7 @@ main {
 	padding-left: 20px;
 }
 
-@media screen and (max-width: 60rem) {
+@media screen and (max-width: 80rem) {
 	main {
 		grid-template-columns: 1fr;
 	}
@@ -285,6 +274,6 @@ main {
 
 @media print {
 	main {
-		width: 60rem;
+		max-width: none;
 	}
 }

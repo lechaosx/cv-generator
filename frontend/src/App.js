@@ -56,7 +56,7 @@ const CvSection = ({ title, children }) => (
 
 function App() {
 	const [data, setData] = useState(null);
-	
+
 	const [searchParams] = useSearchParams();
 
 	var url = searchParams.get('url');
@@ -72,15 +72,15 @@ function App() {
 		if (refresh) {
 			params.append('refresh', '');
 		}
-	
+
 		const apiUrl = `/api/extract?${params.toString()}`;
 
 		fetch(apiUrl)
-		.then(response => response.json())
-		.then(data => setData(data))
-		.catch(error => {
-			console.error('Error parsing data:', error);
-		});
+			.then(response => response.json())
+			.then(data => setData(data))
+			.catch(error => {
+				console.error('Error parsing data:', error);
+			});
 	}, [url, refresh]);
 
 	if (!data) {
@@ -112,7 +112,9 @@ function App() {
 					<p>{data.description}</p>
 				</CvSection>
 				<CvSection title="Skills">
-					{data.skills?.map(skill => (<Skill name={skill.name} percentage={skill.level}/>))}
+					{data.skills?.map((skill, index) => (
+						<Skill key={index} name={skill.name} percentage={skill.level} />
+					))}
 				</CvSection>
 				<CvSection title="Interests">
 					{data.interests?.join(' · ')}
@@ -127,8 +129,8 @@ function App() {
 			<div className="timelines">
 				<CvSection title="Work Experience">
 					<Timeline>
-						{data.experience?.map((job) => (
-							<TimelineEntry>
+						{data.experience?.map((job, index) => (
+							<TimelineEntry key={index}>
 								{job.company}
 								{`${job.start_month}/${job.start_year} – ${job.end_year ? `${job.end_month}/${job.end_year}` : 'present'}`}
 								{job.title}
@@ -139,8 +141,8 @@ function App() {
 				</CvSection>
 				<CvSection title="Education">
 					<Timeline>
-						{data.education?.map((edu) => (
-							<TimelineEntry>
+						{data.education?.map((edu, index) => (
+							<TimelineEntry key={index}>
 								{edu.institution}
 								{<>{edu.subinstitution}<br/>{edu.end_year}</>}
 								{edu.title}
