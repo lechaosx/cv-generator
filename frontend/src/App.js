@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import './App.css';
 
@@ -55,12 +55,29 @@ const CvSection = ({ title, children }) => (
 )
 
 function App() {
+	const [searchParams, setSearchParams] = useSearchParams();
+
+	const [url, setUrl] = useState(searchParams.get('url'));
+	const [refresh, setRefresh] = useState(searchParams.has('refresh'));
+
 	const [data, setData] = useState(null);
 
-	const [searchParams] = useSearchParams();
+	const inputRef = useRef(null);
 
-	var url = searchParams.get('url');
-	var refresh = searchParams.has('refresh');
+	const handleSubmit = (e) => {
+		e.preventDefault();
+		const url = inputRef.current.value;
+		if (url) {
+			const updatedParams = new URLSearchParams(searchParams);
+			updatedParams.set('url', url);
+			setSearchParams(updatedParams);
+		}
+	};
+
+	useEffect(() => {
+		setUrl(searchParams.get('url'));
+		setRefresh(searchParams.has('refresh'));
+	}, [searchParams])
 
 	useEffect(() => {
 		const params = new URLSearchParams();
@@ -124,6 +141,12 @@ function App() {
 						<a className="github" href={`https://${data.github}`}>{data.github}</a>
 						<a className="linkedin" href={`https://${data.linkedin}`}>{data.linkedin}</a>
 					</div>
+				</CvSection>
+				<CvSection title="Generate your own CV!">
+				<form onSubmit={handleSubmit}>
+					<input type="url" placeholder="Enter public markdown URL" value={url} ref={inputRef} required/>
+					<button type="submit">Submit</button>
+				</form>
 				</CvSection>
 			</div>
 			<div className="timelines">
