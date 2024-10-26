@@ -45,8 +45,8 @@ const Timeline = ({ children }) => (
 	</div>
 );
 
-const CvSection = ({ title, children }) => (
-	<section>
+const CvSection = ({ title, children, className }) => (
+	<section className={className}>
 		<h2 className="section-header">{title}</h2>
 		<div className="section-content">
 			{children}
@@ -142,9 +142,9 @@ function App() {
 						<a className="linkedin" href={`https://${data.linkedin}`}>{data.linkedin}</a>
 					</div>
 				</CvSection>
-				<CvSection title="Generate your own CV!">
+				<CvSection title="Generate your own CV!" className="cv-gen">
 				<form onSubmit={handleSubmit}>
-					<input type="url" placeholder="Enter public markdown URL" value={url} ref={inputRef} required/>
+					<input type="url" placeholder="Public URL to your info" value={url} ref={inputRef} required/>
 					<button type="submit">Submit</button>
 				</form>
 				</CvSection>
