@@ -52,7 +52,7 @@ const CvSection = ({ title, children, className }) => (
 			{children}
 		</div>
 	</section>
-)
+);
 
 function App() {
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -136,12 +136,16 @@ function App() {
 				<CvSection title="Interests">
 					{data.interests?.join(' · ')}
 				</CvSection>
-				<CvSection title="Connect">
+				{(data.github || data.linkedin) && (<CvSection title="Connect">
 					<div className="connect">
+					{data.github && (
 						<a className="github" href={`https://${data.github}`}>{data.github}</a>
+					)}
+					{data.linkedin && (
 						<a className="linkedin" href={`https://${data.linkedin}`}>{data.linkedin}</a>
+					)}
 					</div>
-				</CvSection>
+				</CvSection>)}
 				<CvSection title="Generate your own CV!" className="cv-gen">
 				<form onSubmit={handleSubmit}>
 					<input type="url" placeholder="URL with your info" value={url} ref={inputRef} required/>
