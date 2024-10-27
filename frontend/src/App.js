@@ -144,7 +144,7 @@ function App() {
 				</CvSection>
 				<CvSection title="Generate your own CV!" className="cv-gen">
 				<form onSubmit={handleSubmit}>
-					<input type="url" placeholder="Public URL to your info" value={url} ref={inputRef} required/>
+					<input type="url" placeholder="URL with your info" value={url} ref={inputRef} required/>
 					<button type="submit">Submit</button>
 				</form>
 				</CvSection>
