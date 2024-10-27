@@ -1,4 +1,9 @@
 services:
+  redis:
+    image: redis:latest
+    volumes:
+      - redis-data:/data
+
   backend:
     build: 
       context: backend
@@ -12,6 +17,10 @@ services:
       - ./backend/data:/app/data
     depends_on:
       - redis
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.backend.rule=PathPrefix(`/api`)
+      - traefik.http.services.backend.loadbalancer.server.port=5000
 
   frontend:
     build: 
@@ -22,21 +31,25 @@ services:
       - ./frontend/src:/app/src
     depends_on:
       - backend
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.frontend.rule=PathPrefix(`/`)
+      - traefik.http.services.frontend.loadbalancer.server.port=3000
 
-  nginx:
-    build: 
-      context: nginx
-      target: dev
+  traefik:
+    image: traefik:latest
+    command:
+      - --api.insecure=true
+      - --providers.docker
+      - --providers.docker.exposedbydefault=false
     ports:
-      - "80:80"
+      - 80:80
+      - 8080:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - frontend
       - backend
-
-  redis:
-    image: redis:latest
-    volumes:
-      - redis-data:/data
 
 volumes:
   redis-data:

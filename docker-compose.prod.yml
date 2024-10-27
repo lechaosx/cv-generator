@@ -1,49 +1,78 @@
 services:
+  watchtower:
+    image: containrrr/watchtower
+    command:
+      - --label-enable
+      - --interval=30
+      - --rolling-restart
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  redis:
+    image: redis:latest
+    volumes:
+      - redis-data-prod:/data
+
   backend:
-    build: 
-      context: backend
-      target: prod
+    image: ghcr.io/xdlaba02/cv-generator/backend:prod
     environment:
       OPENAI_KEY: /run/secrets/openai_key
     secrets:
       - openai_key
     depends_on:
       - redis
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.backend.rule=Host(`dlabaja.eu`) && PathPrefix(`/api`)
+      - traefik.http.routers.backend.entrypoints=websecure
+      - traefik.http.routers.backend.tls.certresolver=myresolver
+      - traefik.http.services.backend.loadbalancer.server.port=5000
+      - com.centurylinklabs.watchtower.enabled=true
+    deploy:
+      mode: replicated
+      replicas: 2
 
   frontend:
-    build: 
-      context: frontend
-      target: prod
+    image: ghcr.io/xdlaba02/cv-generator/frontend:prod
     depends_on:
       - backend
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.frontend.rule=Host(`dlabaja.eu`)
+      - traefik.http.routers.frontend.entrypoints=websecure
+      - traefik.http.routers.frontend.tls.certresolver=myresolver
+      - traefik.http.services.frontend.loadbalancer.server.port=80
+      - com.centurylinklabs.watchtower.enabled=true
+    deploy:
+      mode: replicated
+      replicas: 2
 
-  nginx:
-    build: 
-      context: nginx
-      target: prod
+  traefik:
+    image: traefik:latest
+    command:
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --certificatesresolvers.myresolver.acme.tlschallenge=true
+      - --certificatesresolvers.myresolver.acme.email=lechaosx@gmail.com
+      - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
+      - --log.level=INFO
     ports:
-      - "443:443"
-    secrets:
-      - source: nginx_key
-        target: /etc/nginx/ssl/nginx.key
-      - source: nginx_cert
-        target: /etc/nginx/ssl/nginx.crt
+      - 80:80
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
     depends_on:
       - frontend
       - backend
-  
-  redis:
-    image: redis:latest
-    volumes:
-      - redis-data-prod:/data
 
 volumes:
   redis-data-prod:
+  letsencrypt:
 
 secrets:
   openai_key:
     file: ./secrets/openai_key
-  nginx_cert:
-    file: ./secrets/nginx.crt
-  nginx_key:
-    file: ./secrets/nginx.key

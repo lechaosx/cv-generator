@@ -1,0 +1,32 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Log in to the Docker registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and Push Backend Docker Image
+      run: |
+        cd backend
+        docker buildx build --platform linux/arm64 --target prod -t ghcr.io/xdlaba02/cv-generator/backend:prod --push .
+
+    - name: Build and Push Frontend Docker Image
+      run: |
+        cd frontend
+        docker buildx build --platform linux/arm64 --target prod -t ghcr.io/xdlaba02/cv-generator/frontend:prod --push .
