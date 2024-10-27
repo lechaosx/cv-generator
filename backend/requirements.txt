@@ -1,6 +1,5 @@
 flask
 openai
 pydantic
-pydantic[email]
 requests
 redis
