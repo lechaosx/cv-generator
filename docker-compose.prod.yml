@@ -8,11 +8,13 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $HOME/.docker/config.json:/config.json
+    restart: unless-stopped
 
   redis:
     image: redis:latest
     volumes:
       - redis-data-prod:/data
+    restart: unless-stopped
 
   backend:
     image: ghcr.io/xdlaba02/cv-generator/backend:prod
@@ -32,6 +34,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
+    restart: unless-stopped
 
   frontend:
     image: ghcr.io/xdlaba02/cv-generator/frontend:prod
@@ -47,6 +50,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
+    restart: unless-stopped
 
   traefik:
     image: traefik:latest
@@ -69,6 +73,7 @@ services:
     depends_on:
       - frontend
       - backend
+    restart: unless-stopped
 
 volumes:
   redis-data-prod:
