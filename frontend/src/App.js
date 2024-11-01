@@ -37,15 +37,20 @@ function App() {
 	useEffect(() => {
 		const params = new URLSearchParams();
 
-		if (url) {
-			params.append('url', url);
-		}
-
-		if (refresh) {
-			params.append('refresh', '');
-		}
-
-		const apiUrl = `/api/extract?${params.toString()}`;
+		const apiUrl = (() => {
+			if (url) {
+				params.append('url', url);
+	
+				if (refresh) {
+					params.append('refresh', '');
+				}
+		
+				return `/api/extract?${params.toString()}`;
+			}
+			else {
+				return `/default.json`
+			}
+		})();
 
 		fetch(apiUrl)
 			.then(response => response.json())
@@ -96,7 +101,7 @@ function App() {
 					)}
 					</div>
 				</CvSection>)}
-				<CvSection title="Generate your own CV!" className="cv-gen">
+				<CvSection title="Generate your own CV! (BETA)" className="cv-gen">
 				<form onSubmit={handleSubmit}>
 					<input type="url" placeholder="URL with your info" value={url} ref={inputRef} required/>
 					<button type="submit">Submit</button>

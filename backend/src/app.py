@@ -49,38 +49,37 @@ class PersonalInfo(pydantic.BaseModel):
 @app.route("/api/extract", methods=['GET'])
 def extract_personal_info():
 
-	url = flask.request.args.get('url')
 	refresh = 'refresh' in flask.request.args
 
+	url = flask.request.args.get('url')
+
+	if not url:
+		return { "error": f"Url was not specified!"}, 400
+
+	url = urllib.parse.unquote(flask.request.args.get('url'))
+
 	redis_client = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses=True)
-	cache_key = url if url else "cv.md"
 
 	if not refresh:
-		cached_response = redis_client.get(cache_key)
+		cached_response = redis_client.get(url)
 		if cached_response:
 			return cached_response, 200
 
-	if url:
-		url = urllib.parse.unquote(flask.request.args.get('url'))
-		response = requests.get(url)
-		if response.status_code != 200:
-			return { "error": f"Failed to fetch data from url '{url}'!"}, response.status_code
-		text = response.text
-	else:
-		with open('data/cv.md') as f:
-			text = f.read()
+	response = requests.get(url)
+	if response.status_code != 200:
+		return { "error": f"Failed to fetch data from url '{url}'!"}, response.status_code
 
 	response = openai.beta.chat.completions.parse(
 		model = "gpt-4o-mini",
 		messages = [
 			{"role": "system", "content": "You are an assistant that extracts personal information for a CV."},
-			{"role": "user", "content": text}
+			{"role": "user", "content": response.text}
 		],
 		response_format = PersonalInfo
 	)
 
 	response_data = response.choices[0].message.parsed.model_dump(mode='json')
 
-	redis_client.set(cache_key, json.dumps(response_data), ex=60 * 60 * 24 * 7)
+	redis_client.set(url, json.dumps(response_data), ex=60 * 60 * 24 * 7)
 
 	return response_data
