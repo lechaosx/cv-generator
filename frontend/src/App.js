@@ -2,55 +2,10 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import './App.css';
 
-const ProgressBar = ({ percentage }) => (
-	<div className="progress-bar">
-		<div className="progress-bar-fill" style={{ width: `${percentage}%` }} />
-		{percentage} %
-	</div>
-);
-
-const Skill = ({ name, percentage }) => (
-	<div className="skill">
-		<strong>{name}</strong>
-		<ProgressBar percentage={percentage}/>
-	</div>
-);
-
-const TimelineEntry = ({ children }) => {
-	const childArray = React.Children.toArray(children);
-
-	if (childArray.length !== 4) {
-		throw new Error('TimelineEntry expects exactly 4 children.');
-	}
-
-	const [first, second, third, fourth] = childArray;
-
-	return (
-		<>
-			<div className="left">
-				<strong>{first}</strong>
-				<div>{second}</div>
-			</div>
-			<div className="right">
-				<strong>{third}</strong>
-				<p>{fourth}</p>
-			</div>
-		</>
-	);
-};
-
-const Timeline = ({ children }) => (
-	<div className="timeline">
-		{children}
-	</div>
-);
-
 const CvSection = ({ title, children, className }) => (
 	<section className={className}>
 		<h2 className="section-header">{title}</h2>
-		<div className="section-content">
-			{children}
-		</div>
+		{children}
 	</section>
 );
 
@@ -128,11 +83,6 @@ function App() {
 				<CvSection title="About Me">
 					<p>{data.description}</p>
 				</CvSection>
-				<CvSection title="Skills">
-					{data.skills?.map((skill, index) => (
-						<Skill key={index} name={skill.name} percentage={skill.level} />
-					))}
-				</CvSection>
 				<CvSection title="Interests">
 					{data.interests?.join(' · ')}
 				</CvSection>
@@ -153,30 +103,41 @@ function App() {
 				</form>
 				</CvSection>
 			</div>
-			<div className="timelines">
+			<div>
 				<CvSection title="Work Experience">
-					<Timeline>
+					<div className="timeline">
 						{data.experience?.map((job, index) => (
-							<TimelineEntry key={index}>
-								{job.company}
-								{`${job.start_month}/${job.start_year} – ${job.end_year ? `${job.end_month}/${job.end_year}` : 'present'}`}
-								{job.title}
-								{job.description}
-							</TimelineEntry>
+							<>
+								<div>
+									<strong>{job.company}</strong>
+									<div>{`${job.start_month}/${job.start_year} – ${job.end_year ? `${job.end_month}/${job.end_year}` : 'present'}`}</div>
+									<div className="badge-list">
+										{job.badges?.map((badge, index) => (<div>{badge}</div>))}
+									</div>
+								</div>
+								<div>
+									<strong>{job.title}</strong>
+									<p>{job.description}</p>
+								</div>
+							</>
 						))}
-					</Timeline>
+					</div>
 				</CvSection>
 				<CvSection title="Education">
-					<Timeline>
+					<div className="timeline">
 						{data.education?.map((edu, index) => (
-							<TimelineEntry key={index}>
-								{edu.institution}
-								{<>{edu.subinstitution}<br/>{edu.end_year}</>}
-								{edu.title}
-								{edu.description}
-							</TimelineEntry>
+							<>
+								<div>
+									<strong>{edu.institution}</strong>
+									<div>{<>{edu.subinstitution}<br/>{edu.end_year}</>}</div>
+								</div>
+								<div>
+									<strong>{edu.title}</strong>
+									<p>{edu.description}</p>
+								</div>
+							</>
 						))}
-					</Timeline>
+					</div>
 				</CvSection>
 			</div>
 		</main>

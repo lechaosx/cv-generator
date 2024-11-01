@@ -8,17 +8,10 @@
 **Email**: [dr.dlabaja@gmail.com](mailto:dr.dlabaja@gmail.com)
 
 ## About Me
-Skilled software engineer with a proven ability to analyze complex problems, propose a set of solutions along with their strengths and weaknesses, and implement the solutions according to the needs of the team. Proactive strategic thinker who can get things done.
-
-## Skills
-- **C++**: 100%
-- **Git**: 100%
-- **CMake**: 100%
-- **Python**: 80%
-- **Computer Graphics**: 60%
-- **C#**: 60%
+Skilled software engineer with a proven ability to analyze complex problems, propose solutions with their strengths and weaknesses, and implement the solutions according to the team's needs. Proactive strategic thinker who can get things done.
 
 ## Interests
+- Learning
 - Bouldering
 - Running
 - 3D Printing
@@ -26,6 +19,7 @@ Skilled software engineer with a proven ability to analyze complex problems, pro
 - Hiking
 - Music
 - Coffee Science
+- Gaming
 
 ## Connect
 - [github.com/xdlaba02](https://github.com/xdlaba02)  
@@ -33,35 +27,30 @@ Skilled software engineer with a proven ability to analyze complex problems, pro
 
 ## Experience
 
-### Tech Lead at Chyron
-**June 2024 - Present**
-- Mentoring and aiding team members with technical knowledge and best practices.
-- Defining the technical direction and architecture of the product, ensuring it aligns with business goals.
-- Promoting healthy development practices, introducing agility into our processes with measurable positive outcomes.
-- Research and experimentation with new technologies, encouraging innovation within the team.
-- Management of the technical state of the product, ensuring smooth development and operations processes.
-- Communication with engineers, testers, and stakeholders regarding the technical state and future vision.
-
-### Senior Software Engineer at Chyron
-**March 2023 - June 2024**
-- Maintenance and renovation of a 20-year-old 10M LOC legacy codebase.
-- Management of CI/CD pipelines, build systems, and build environment.
-- Decision making about future development processes, risk/reward analysis.
-- Evaluation of existing & new code quality, conducting code reviews.
-- Management of technical debt, creation and maintenance of technical documentation.
+### Tech Lead | Senior Software Engineer at Chyron
+**March 2023 - Present**
+- Started as a Senior Software Engineer, promoted to Tech Lead in June 2024.
+- Working in a cross-functional team of nine members while collaborating with specialized teams in the company.
+- Leading maintenance of a 20-year-old 10M LOC legacy codebase with responsibility for the technical state.
+- Initiatively promoting healthy development practices, introduced agility into the team processes with measurable positive outcomes.
+- Mentoring, encouraging innovation, research and experimentation.
+- Active communication with stakeholders regarding the technical state and future vision.
+- Windows, Visual Studio, CMake, Conan, C++14, C++/CLI, C#, .NET Framework, Python, Git, Jenkins, Jira.
 
 ### Software Developer at TESCAN 3DIM, s.r.o.
 **April 2021 - March 2023**
 - Engineering of data structures for spatial query acceleration.
-- Implementation of mechanisms for task parallelism that allows safe interaction within a thread-unsafe environment.
-- Research of algorithms for robust mesh booleans.
-- Development of new platform-independent build architecture for existing codebase based on modern CMake and Conan.
+- Implemented mechanisms for task parallelism that allow safe interaction within a thread-unsafe environment.
+- Researched and implemented algorithms for robust mesh booleans.
+- Developed new, platform-independent build architecture for existing codebase based on modern CMake and Conan.
+- Linux, Windows, Visual Studio, CMake, Conan, C++17, Qt 5, Git, GitLab CI/CD, Redmine.
 
-### Researcher at Brno University of Technology
+### Data Compression Researcher at Brno University of Technology
 **June 2019 - December 2020**
-- Researched new state-of-the-art methodologies for compression of 4D light-field image data.
-- Published work in *Multimedia Tools and Applications* journal and presented at the WSCG conference.
-- The code is publicly available as an open-source library.
+- Researched and implemented new, state-of-the-art methodology for compression of 4D light-field image data based on 4D-DCT.
+- The work was published in *Multimedia Tools and Applications* journal and presented at the WSCG conference.
+- The code is publicly available as an open-source library [github.com/xdlaba02/light-field-image-format](https://github.com/xdlaba02/light-field-image-format).
+- Linux, C++20, Git, CMake
 
 ## Education
 

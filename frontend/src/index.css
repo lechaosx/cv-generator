@@ -22,8 +22,6 @@ body {
 	background-color: #2a2a2e;
 	font-family: var(--normal-font);
 	font-weight: 300;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
 }
 
 code {

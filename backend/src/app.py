@@ -13,18 +13,15 @@ app = flask.Flask(__name__)
 with open(os.getenv("OPENAI_KEY"), "r") as file:
 	openai.api_key = file.read().strip()
 
-class Skill(pydantic.BaseModel):
-	name: str  = pydantic.Field(description="The name of the skill.")
-	level: int = pydantic.Field(description="Proficiency level of the skill, as a percetage.")
-
 class Experience(pydantic.BaseModel):
-	title: str       = pydantic.Field(description="Job title.")
-	company: str     = pydantic.Field(description="Company full legal name.")
-	start_month: str = pydantic.Field(description="Starting month of employment. Use two decimal places, like 01 or 12.")
-	start_year: str  = pydantic.Field(description="Starting year of employment.")
-	end_month: str   = pydantic.Field(description="Ending month of employment. Use two decimal places, like 01 or 12. Make it empty string when not known.")
-	end_year: str    = pydantic.Field(description="Ending year of employment. Make it empty string when not known.")
-	description: str = pydantic.Field(description="Description of the job responsibilities and achievements. When not available or is too short, create a description from the input.")
+	title: str        = pydantic.Field(description="Job title.")
+	company: str      = pydantic.Field(description="Company full legal name.")
+	start_month: str  = pydantic.Field(description="Starting month of employment. Use two decimal places, like 01 or 12.")
+	start_year: str   = pydantic.Field(description="Starting year of employment.")
+	end_month: str    = pydantic.Field(description="Ending month of employment. Use two decimal places, like 01 or 12. Make it empty string when not known.")
+	end_year: str     = pydantic.Field(description="Ending year of employment. Make it empty string when not known.")
+	description: str  = pydantic.Field(description="Description of the job responsibilities and achievements. When not available or is too short, create a description from the input.")
+	badges: list[str] = pydantic.Field(description="Skills and technologies assocated with the position.")
 
 class Education(pydantic.BaseModel):
 	title: str          = pydantic.Field(description="Degree title. Use wordy name, like 'Master's Degree' or such.")
@@ -43,7 +40,6 @@ class PersonalInfo(pydantic.BaseModel):
 	location: str                = pydantic.Field(description="Current location (city, state).")
 	photo: str                   = pydantic.Field(description="URL of the profile photo.")
 	description: str             = pydantic.Field(description="A brief personal description or bio. Make something up if not directly available.")
-	skills: list[Skill]          = pydantic.Field(description="List of skills with proficiency levels. Extract 5 - 10 skills.")
 	interests: list[str]         = pydantic.Field(description="List of personal interests or hobbies.")
 	github: str                  = pydantic.Field(description="GitHub profile URL without the http/https prefix.")
 	linkedin: str                = pydantic.Field(description="LinkedIn profile URL without the http/https prefix.")
