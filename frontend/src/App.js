@@ -111,18 +111,22 @@ function App() {
 			<div>
 				<CvSection title="Work Experience">
 					<div className="timeline">
-						{data.experience?.map((job, index) => (
+						{data.experience?.map((job) => (
 							<>
 								<div>
 									<strong>{job.company}</strong>
 									<div>{`${job.start_month}/${job.start_year} – ${job.end_year ? `${job.end_month}/${job.end_year}` : 'present'}`}</div>
 									<div className="badge-list">
-										{job.badges?.map((badge, index) => (<div>{badge}</div>))}
+										{job.badges?.map((badge) => (<div>{badge}</div>))}
 									</div>
 								</div>
 								<div>
-									<strong>{job.title}</strong>
+								<strong>{job.title}</strong>
+								{Array.isArray(job.description) ? (
+									<p>{job.description.join(" ")}</p>
+								) : (
 									<p>{job.description}</p>
+								)}
 								</div>
 							</>
 						))}
@@ -138,7 +142,11 @@ function App() {
 								</div>
 								<div>
 									<strong>{edu.title}</strong>
-									<p>{edu.description}</p>
+									{Array.isArray(edu.description) ? (
+										<p>{edu.description.join(" ")}</p>
+									) : (
+										<p>{edu.description}</p>
+									)}
 								</div>
 							</>
 						))}

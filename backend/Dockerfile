@@ -1,4 +1,4 @@
-FROM python:3.12-alpine as base
+FROM python:3.12-alpine AS base
 
 WORKDIR /app
 
@@ -10,11 +10,11 @@ COPY . .
 
 ENV PYTHONUNBUFFERED=1
 
-FROM base as dev
+FROM base AS dev
 
 CMD flask --app src/app.py --debug run --host=0.0.0.0
 
-FROM base as prod
+FROM base AS prod
 
 RUN pip install --no-cache-dir gunicorn
 

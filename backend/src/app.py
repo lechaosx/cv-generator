@@ -14,14 +14,14 @@ with open(os.getenv("OPENAI_KEY"), "r") as file:
 	openai.api_key = file.read().strip()
 
 class Experience(pydantic.BaseModel):
-	title: str        = pydantic.Field(description="Job title.")
-	company: str      = pydantic.Field(description="Company full legal name.")
-	start_month: str  = pydantic.Field(description="Starting month of employment. Use two decimal places, like 01 or 12.")
-	start_year: str   = pydantic.Field(description="Starting year of employment.")
-	end_month: str    = pydantic.Field(description="Ending month of employment. Use two decimal places, like 01 or 12. Make it empty string when not known.")
-	end_year: str     = pydantic.Field(description="Ending year of employment. Make it empty string when not known.")
-	description: str  = pydantic.Field(description="Description of the job responsibilities and achievements. When not available or is too short, create a description from the input.")
-	badges: list[str] = pydantic.Field(description="Skills and technologies assocated with the position.")
+	title: str             = pydantic.Field(description="Job title.")
+	company: str           = pydantic.Field(description="Company full legal name.")
+	start_month: str       = pydantic.Field(description="Starting month of employment. Use two decimal places, like 01 or 12.")
+	start_year: str        = pydantic.Field(description="Starting year of employment.")
+	end_month: str         = pydantic.Field(description="Ending month of employment. Use two decimal places, like 01 or 12. Make it empty string when not known.")
+	end_year: str          = pydantic.Field(description="Ending year of employment. Make it empty string when not known.")
+	description: list[str] = pydantic.Field(description="Description of the job responsibilities and achievements. When not available or is too short, create a description from the input.")
+	badges: list[str]      = pydantic.Field(description="Skills and technologies assocated with the position.")
 
 class Education(pydantic.BaseModel):
 	title: str          = pydantic.Field(description="Degree title. Use wordy name, like 'Master's Degree' or such.")

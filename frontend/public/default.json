@@ -7,7 +7,7 @@
 	"email": "dr.dlabaja@gmail.com",
 	"location": "Brno, Královo Pole",
 	"photo": "profile.jpg",
-	"description": "Skilled software engineer and leader with a proven ability to collaboratively tackle complex problems, propose solutions with their trade-offs, and implement them according to customer needs. A proactive strategic thinker who unites the team to get things done.",
+	"description": "Skilled software engineer with a proven ability to lead and collaboratively tackle complex problems, analyze solutions with their trade-offs, and make sure the implementation meets customer needs. Proactive strategic thinker who can get things done.",
 	"interests": [
 		"Learning",
 		"Bouldering",
@@ -23,13 +23,19 @@
 	"linkedin": "linkedin.com/in/dlabajad",
 	"experience": [
 		{
-			"title": "Tech Lead | Senior Software Engineer",
+			"title": "Senior Software Engineer",
 			"company": "Chyron",
 			"start_month": "03",
 			"start_year": "2023",
 			"end_month": "",
 			"end_year": "",
-			"description": "Started as a Senior Software Engineer, promoted to Tech Lead in June 2024. Worked in a cross-functional team of nine members while collaborating with specialized teams in the company. Led maintenance of a 20-year-old 10M LOC legacy codebase with responsibility for the technical state. Initiatively promoted healthy development practices, introduced agility into the team processes with measurable positive outcomes. Mentored, encouraged innovation, research and experimentation. Actively communicated with stakeholders regarding the technical state and future vision.",
+			"description": [
+				"Working as a technical lead of Chyron Weather™, a product for interactive visualization of weather forecasts for broadcast.",
+				"Leading maintenance of a 20-year-old, 10M LOC legacy codebase.",
+				"Collaborating in a cross-functional, diverse team of nine software developers.",
+				"Mentoring team members and leading technical discussions.",
+				"Actively promoting healthy agile development practices. Introduced agility into our processes with measurable positive outcomes."
+			],
 			"badges": [
 				"Windows",
 				"Visual Studio",
@@ -52,7 +58,12 @@
 			"start_year": "2021",
 			"end_month": "03",
 			"end_year": "2023",
-			"description": "Engineered data structures for spatial query acceleration. Implemented mechanisms for task parallelism that allow safe interaction within a thread-unsafe environment. Researched and implemented algorithms for robust mesh booleans. Developed new, platform-independent build architecture for existing codebase based on modern CMake and Conan.",
+			"description": [
+				"Worked on BlueSkyPlan™, a product for dental treatment planning.",
+				"As a member of a Geometry Team, I spent most of the time researching, implementing, and optimizing advanced algorithms and data structures for mesh and voxel data.",
+				"I dipped my toes into spatial query acceleration, vertical and horizontal parallelism, robust mesh booleans, and more.",
+				"As part of a cloud computing initiative, I led the development of a new, platform-independent build architecture for the existing codebase based on modern CMake and Conan."
+			],
 			"badges": [
 				"Linux",
 				"Windows",
@@ -73,7 +84,11 @@
 			"start_year": "2019",
 			"end_month": "12",
 			"end_year": "2020",
-			"description": "Researched and implemented new, state-of-the-art methodology for compression of 4D light-field image data. The work was published in Multimedia Tools and Applications journal and presented at the WSCG conference. The code is publicly available as an open-source library at my GitHub.",
+			"description": [
+				"Researched and implemented new, state-of-the-art methodology for compression of 4D light-field image data.",
+				"The work was published in Multimedia Tools and Applications journal and presented at the WSCG conference.",
+				"The code is publicly available as an open-source library at my GitHub."
+			],
 			"badges": [
 				"Linux",
 				"C++20",
@@ -88,14 +103,22 @@
 			"institution": "Brno University of Technology",
 			"subinstitution": "Faculty of Information Technology",
 			"end_year": "2022",
-			"description": "Specialization in Computer Graphics and Interaction. Thesis on visualization of large volumetric data on CPU with emphasis on data structures, cache coherency, parallelization, and vectorization. Developed in cooperation with TESCAN 3DIM, s.r.o."
+			"description": [
+				"Specialization in Computer Graphics and Interaction.", 
+				"Thesis on visualization of large volumetric data on CPU, with emphasis on data structures, cache coherency, parallelization, and vectorization.",
+				"Developed in cooperation with TESCAN 3DIM, s.r.o."
+			]
 		},
 		{
 			"title": "Bachelor's Degree",
 			"institution": "Brno University of Technology",
 			"subinstitution": "Faculty of Information Technology",
 			"end_year": "2019",
-			"description": "Thesis on lossy light field compression. Received Dean's award for excellent bachelor's thesis and presented research at the Excel@FIT student conference, earned award for quality work and experimental results."
+			"description": [
+				"Thesis on lossy light field compression.",
+				"Received Dean's award for excellent bachelor's thesis.",
+				"Presented the research at the Excel@FIT student conference, earned award for quality work and experimental results."
+			]
 		}
 	]
 }
