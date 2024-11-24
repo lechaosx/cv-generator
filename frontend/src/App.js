@@ -65,7 +65,14 @@ function App() {
 	}
 
 	document.title = data.name;
-	document.querySelector("link[rel~='icon']").href = data.photo;
+	
+	var link = document.querySelector("link[rel~='icon']");
+	if (!link) {
+		link = document.createElement('link');
+		link.rel = 'icon';
+		document.head.appendChild(link);
+	}
+	link.href = data.photo;
 
 	return (
 		<main>
