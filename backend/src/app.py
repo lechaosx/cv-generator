@@ -48,9 +48,6 @@ class PersonalInfo(pydantic.BaseModel):
 
 @app.route("/api/extract", methods=['GET'])
 def extract_personal_info():
-
-	refresh = 'refresh' in flask.request.args
-
 	url = flask.request.args.get('url')
 
 	if not url:
@@ -60,7 +57,7 @@ def extract_personal_info():
 
 	redis_client = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses=True)
 
-	if not refresh:
+	if not 'refresh' in flask.request.args:
 		cached_response = redis_client.get(url)
 		if cached_response:
 			return cached_response, 200
