@@ -35,8 +35,8 @@ jobs:
         platforms: linux/arm64
         push: true
         tags: ghcr.io/xdlaba02/cv-generator/backend:prod
-#        cache-from: type=registry,ref=ghcr.io/xdlaba02/cv-generator/backend:prod
-#        cache-to: type=registry,ref=ghcr.io/xdlaba02/cv-generator/backend:prod,mode=max
+        cache-from: type=gha,scope=backend
+        cache-to: type=gha,mode=max,scope=backend
 
     - name: Build and Push Frontend Docker Image
       uses: docker/build-push-action@v6
@@ -46,5 +46,5 @@ jobs:
         platforms: linux/arm64
         push: true
         tags: ghcr.io/xdlaba02/cv-generator/frontend:prod
-#        cache-from: type=registry,ref=ghcr.io/xdlaba02/cv-generator/frontend:prod
-#        cache-to: type=registry,ref=ghcr.io/xdlaba02/cv-generator/frontend:prod,mode=max
+        cache-from: type=gha,scope=frontend
+        cache-to: type=gha,mode=max,scope=frontend
