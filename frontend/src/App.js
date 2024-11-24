@@ -48,7 +48,7 @@ function App() {
 				return `/api/extract?${params.toString()}`;
 			}
 			else {
-				return `/default.json`
+				return `https://xdlaba02.github.io/cv-data/cv.json`
 			}
 		})();
 
