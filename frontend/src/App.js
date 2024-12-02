@@ -33,6 +33,7 @@ function App() {
 			updatedParams.set('url', url);
 			updatedParams.set('seed', Array.from({ length: 3 }, () => dictionary[Math.floor(Math.random() * dictionary.length)]).join("-"));
 			setSearchParams(updatedParams);
+			setData(null)
 		}
 	};
 
@@ -42,10 +43,10 @@ function App() {
 	}, [searchParams])
 
 	useEffect(() => {
-		const params = new URLSearchParams();
-
 		const apiUrl = (() => {
 			if (url) {
+				const params = new URLSearchParams();
+				
 				params.append('url', url);
 	
 				if (seed) {
