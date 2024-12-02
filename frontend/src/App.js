@@ -2,6 +2,12 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import './App.css';
 
+const dictionary = [
+	"apple", "banana", "cherry", "date", "elderberry",
+	"fig", "grape", "honeydew", "kiwi", "lemon",
+	"mango", "nectarine", "orange", "peach", "quince"
+];
+
 const CvSection = ({ title, children, className }) => (
 	<section className={className}>
 		<h2 className="section-header">{title}</h2>
@@ -13,7 +19,7 @@ function App() {
 	const [searchParams, setSearchParams] = useSearchParams();
 
 	const [url, setUrl] = useState(searchParams.get('url'));
-	const [refresh, setRefresh] = useState(searchParams.has('refresh'));
+	const [seed, setSeed] = useState(searchParams.get('seed'));
 
 	const [data, setData] = useState(null);
 
@@ -25,13 +31,14 @@ function App() {
 		if (url) {
 			const updatedParams = new URLSearchParams(searchParams);
 			updatedParams.set('url', url);
+			updatedParams.set('seed', Array.from({ length: 3 }, () => dictionary[Math.floor(Math.random() * dictionary.length)]).join("-"));
 			setSearchParams(updatedParams);
 		}
 	};
 
 	useEffect(() => {
 		setUrl(searchParams.get('url'));
-		setRefresh(searchParams.has('refresh'));
+		setSeed(searchParams.get('seed'));
 	}, [searchParams])
 
 	useEffect(() => {
@@ -41,8 +48,8 @@ function App() {
 			if (url) {
 				params.append('url', url);
 	
-				if (refresh) {
-					params.append('refresh', '');
+				if (seed) {
+					params.append('seed', seed);
 				}
 		
 				return `/api/extract?${params.toString()}`;
@@ -58,7 +65,7 @@ function App() {
 			.catch(error => {
 				console.error('Error parsing data:', error);
 			});
-	}, [url, refresh]);
+	}, [url, seed]);
 
 	if (!data) {
 		return <div className="loading">Crunching numbers...</div>;
