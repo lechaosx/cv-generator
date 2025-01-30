@@ -17,7 +17,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ghcr.io/xdlaba02/cv-generator/backend:prod
+    image: ghcr.io/lechaosx/cv-generator/backend:prod
     environment:
       OPENAI_KEY: /run/secrets/openai_key
     secrets:
@@ -37,7 +37,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/xdlaba02/cv-generator/frontend:prod
+    image: ghcr.io/lechaosx/cv-generator/frontend:prod
     depends_on:
       - backend
     labels:

@@ -56,7 +56,7 @@ function App() {
 				return `/api/extract?${params.toString()}`;
 			}
 			else {
-				return `https://xdlaba02.github.io/cv-data/cv.json`
+				return `https://lechaosx.github.io/cv-data/cv.json`
 			}
 		})();
 
