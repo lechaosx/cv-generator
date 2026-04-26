@@ -274,16 +274,20 @@ h1 {
 @media screen and (max-width: 80rem) {
 	main {
 		grid-template-columns: 1fr;
-	}
 
-	main > * {
-		color: var(--white);
-		background-color: var(--dark);
-	}
+		> :nth-child(2n) {
+			color: var(--white);
+			background-color: var(--dark);
 
-	main > * .section-header {
-		color: var(--light);
-		border-bottom-color: var(--white);
+			a {
+				color: var(--white);
+			}
+
+			.section-header {
+				color: var(--light);
+				border-bottom-color: var(--white);
+			}
+		}
 	}
 
 	.title, h1 {
