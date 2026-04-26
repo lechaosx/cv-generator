@@ -8,101 +8,95 @@
 	<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-	<div id="root">
-		<main>
-			<div class="photo">
-				<img src="{{ data.photo or '/static/placeholder.svg' }}" alt="Profile" width="400">
-			</div>
-			<div class="main-info">
-				<div>
-					<div class="title">{{ data.title_before_name }}</div>
-					<h1>{{ data.name or '<span class="placeholder">Full Name</span>' | safe }}</h1>
-					<div class="position">{{ data.position or '<span class="placeholder">Job Position</span>' | safe }}</div>
-				</div>
-				<div class="contact-list">
-					<div>{{ get_icon('lucide/map-pin') | safe }}{{ data.location or '<span class="placeholder">Location</span>' | safe }}</div>
-					<div>{{ get_icon('lucide/phone') | safe }}{{ data.phone or '<span class="placeholder">Phone</span>' | safe }}</div>
-					<div>{{ get_icon('lucide/mail') | safe }}{{ data.email or '<span class="placeholder">Email</span>' | safe }}</div>
-				</div>
-			</div>
-			<div class="additional-info">
-				<section>
-					<h2 class="section-header">About Me</h2>
-					<p>{{ data.description or '<span class="placeholder">A short bio will appear here.</span>' | safe }}</p>
-				</section>
-				<section>
-					<h2 class="section-header">Interests</h2>
-					{{ data.interests | default([]) | join(' · ') or '<span class="placeholder">Interests will appear here.</span>' | safe }}
-				</section>
-				{% if data.links %}
-				<section>
-					<h2 class="section-header">Connect</h2>
-					<div class="connect">
-						{% for name, url in data.links.items() %}
-						<a href="https://{{ url }}">{{ get_icon('simple-icons/' + name) | safe }}{{ url }}</a>
-						{% endfor %}
-					</div>
-				</section>
-				{% endif %}
-				<section class="cv-gen">
-					<h2 class="section-header">Generate your own CV! (BETA)</h2>
-					<form method="GET" action="/">
-						<input type="url" name="url" value="{{ url }}" placeholder="URL with your info" required>
-						<button type="submit">Submit</button>
-					</form>
-					{% if error %}<p class="cv-gen-error">{{ error }}</p>{% endif %}
-				</section>
-			</div>
+	<main>
+		<div class="photo"><img src="{{ data.photo or '/static/placeholder.svg' }}" alt="Profile" width="400"></div>
+		<div class="main-info">
 			<div>
-				<section>
-					<h2 class="section-header">Work Experience</h2>
-					<div class="timeline">
-						{% for job in data.experience | default([]) %}
-						<div>
-							<strong>{{ job.company }}</strong>
-							<div>{{ job.start_month }}/{{ job.start_year }} – {% if job.end_year %}{{ job.end_month }}/{{ job.end_year }}{% else %}present{% endif %}</div>
-							<div class="badge-list">
-								{% for badge in job.badges %}
-								<div>{{ badge }}</div>
-								{% endfor %}
-							</div>
-						</div>
-						<div>
-							<strong>{{ job.title }}</strong>
-							<p>{{ job.description | join(' ') }}</p>
-						</div>
-						{% else %}
-						<div class="placeholder">Company</div>
-						<div class="placeholder">
-							<strong>Job Title</strong>
-							<p>Experience details will appear here.</p>
-						</div>
-						{% endfor %}
-					</div>
-				</section>
-				<section>
-					<h2 class="section-header">Education</h2>
-					<div class="timeline">
-						{% for edu in data.education | default([]) %}
-						<div>
-							<strong>{{ edu.institution }}</strong>
-							<div>{{ edu.subinstitution }}<br>{{ edu.end_year }}</div>
-						</div>
-						<div>
-							<strong>{{ edu.title }}</strong>
-							<p>{{ edu.description | join(' ') }}</p>
-						</div>
-						{% else %}
-						<div class="placeholder">Institution</div>
-						<div class="placeholder">
-							<strong>Degree Title</strong>
-							<p>Education details will appear here.</p>
-						</div>
-						{% endfor %}
-					</div>
-				</section>
+				<div class="title">{{ data.title_before_name }}</div>
+				<h1>{{ data.name or '<span class="placeholder">Full Name</span>' | safe }}</h1>
+				<div class="position">{{ data.position or '<span class="placeholder">Job Position</span>' | safe }}</div>
 			</div>
-		</main>
-	</div>
+			<div class="contact-list">
+				<div>{{ get_icon('lucide/map-pin') | safe }}{{ data.location or '<span class="placeholder">Location</span>' | safe }}</div>
+				<div>{{ get_icon('lucide/phone') | safe }}{{ data.phone or '<span class="placeholder">Phone</span>' | safe }}</div>
+				<div>{{ get_icon('lucide/mail') | safe }}{{ data.email or '<span class="placeholder">Email</span>' | safe }}</div>
+			</div>
+		</div>
+		<div class="additional-info">
+			<section>
+				<h2 class="section-header">About Me</h2>
+				<p>{{ data.description or '<span class="placeholder">A short bio will appear here.</span>' | safe }}</p>
+			</section>
+			<section>
+				<h2 class="section-header">Interests</h2>
+				{{ data.interests | default([]) | join(' · ') or '<span class="placeholder">Interests will appear here.</span>' | safe }}
+			</section>
+			{% if data.links %}
+			<section class="connect">
+				<h2 class="section-header">Connect</h2>
+				{% for name, url in data.links.items() %}
+				<a href="https://{{ url }}">{{ get_icon('simple-icons/' + name) | safe }}{{ url }}</a>
+				{% endfor %}
+			</section>
+			{% endif %}
+			<section class="cv-gen">
+				<h2 class="section-header">Generate your own CV! (BETA)</h2>
+				<form method="GET" action="/">
+					<input type="url" name="url" value="{{ url }}" placeholder="URL with your info" required>
+					<button type="submit">Submit</button>
+				</form>
+				{% if error %}<p class="cv-gen-error">{{ error }}</p>{% endif %}
+			</section>
+		</div>
+		<div>
+			<section>
+				<h2 class="section-header">Work Experience</h2>
+				<div class="timeline">
+					{% for job in data.experience | default([]) %}
+					<div>
+						<strong>{{ job.company }}</strong>
+						<div>{{ job.start_month }}/{{ job.start_year }} – {% if job.end_year %}{{ job.end_month }}/{{ job.end_year }}{% else %}present{% endif %}</div>
+						<div class="badge-list">
+							{% for badge in job.badges %}
+							<span>{{ badge }}</span>
+							{% endfor %}
+						</div>
+					</div>
+					<div>
+						<strong>{{ job.title }}</strong>
+						<p>{{ job.description | join(' ') }}</p>
+					</div>
+					{% else %}
+					<div class="placeholder">Company</div>
+					<div class="placeholder">
+						<strong>Job Title</strong>
+						<p>Experience details will appear here.</p>
+					</div>
+					{% endfor %}
+				</div>
+			</section>
+			<section>
+				<h2 class="section-header">Education</h2>
+				<div class="timeline">
+					{% for edu in data.education | default([]) %}
+					<div>
+						<strong>{{ edu.institution }}</strong>
+						<div>{{ edu.subinstitution }}<br>{{ edu.end_year }}</div>
+					</div>
+					<div>
+						<strong>{{ edu.title }}</strong>
+						<p>{{ edu.description | join(' ') }}</p>
+					</div>
+					{% else %}
+					<div class="placeholder">Institution</div>
+					<div class="placeholder">
+						<strong>Degree Title</strong>
+						<p>Education details will appear here.</p>
+					</div>
+					{% endfor %}
+				</div>
+			</section>
+		</div>
+	</main>
 </body>
 </html>

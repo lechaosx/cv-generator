@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
 
 :root {
+	--background: #2a2a2e;
 	--dark: #283649;
 	--light: #9c7843;
 	--white: #ffffff;
@@ -15,25 +16,22 @@
 	margin: 0;
 	padding: 0;
 	box-sizing: border-box;
-	print-color-adjust: exact;
 }
 
 body {
-	background-color: #2a2a2e;
+	background-color: var(--background);
 	font-family: var(--normal-font);
 	font-weight: 300;
-}
-
-code {
-	font-family: var(--mono-font);
-}
-
-#root {
+	print-color-adjust: exact;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
 	min-height: 100vh;
+}
+
+code {
+	font-family: var(--mono-font);
 }
 
 main {
@@ -199,18 +197,18 @@ h1 {
 		strong {
 			text-transform: uppercase;
 		}
-	}
 
-	> :nth-child(2n + 1)::after {
-		content: "";
-		position: absolute;
-		top: 7px;
-		right: -0.5px;
-		width: 14px;
-		height: 14px;
-		background-color: var(--light);
-		border-radius: 50%;
-		transform: translate(50%, -50%);
+		&::after {
+			content: "";
+			position: absolute;
+			top: 7px;
+			right: -0.5px;
+			width: 14px;
+			height: 14px;
+			background-color: var(--light);
+			border-radius: 50%;
+			transform: translate(50%, -50%);
+		}
 	}
 
 	.badge-list {
@@ -239,7 +237,6 @@ h1 {
 
 	form {
 		display: flex;
-		flex-direction: row;
 		gap: 10px;
 
 		input {
@@ -279,12 +276,12 @@ h1 {
 		grid-template-columns: 1fr;
 	}
 
-	main > :nth-child(n) {
+	main > * {
 		color: var(--white);
 		background-color: var(--dark);
 	}
 
-	main > :nth-child(n) .section-header {
+	main > * .section-header {
 		color: var(--light);
 		border-bottom-color: var(--white);
 	}
