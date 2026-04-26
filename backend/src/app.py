@@ -118,6 +118,22 @@ def check_domain():
     return ("", 200) if domain in domains else ("", 403)
 
 
+@app.route("/preview", methods=['POST'])
+def preview():
+	data = json.loads(flask.request.form['data'])
+	return flask.render_template('cv.html', data=data, url='', error=None, edit_mode=False)
+
+
+@app.route("/edit")
+def edit():
+	host = flask.request.host.split(':')[0]
+	source = domains.get(host) or DEFAULT_CV
+	if not source:
+		flask.abort(404)
+	data = load_cv(source)
+	return flask.render_template('cv.html', data=data, url='', error=None, edit_mode=True)
+
+
 @app.route("/", methods=['GET'])
 def index():
 	url = flask.request.args.get('url')

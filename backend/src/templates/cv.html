@@ -35,24 +35,25 @@
 		</div>
 		<div class="main-info">
 			<div>
-				<div class="title">{{ data.title_before_name }}</div>
-				<h1>{{ data.name or '<span class="placeholder">Full Name</span>' | safe }}</h1>
-				<div class="position">{{ data.position or '<span class="placeholder">Job Position</span>' | safe }}</div>
+				<div class="title" data-field="title_before_name" data-placeholder="Title">{{ data.title_before_name }}</div>
+				<h1 data-field="name">{{ data.name or '<span class="placeholder">Full Name</span>' | safe }}</h1>
+				<div class="title" data-field="title_after_name" data-placeholder="Title">{{ data.title_after_name }}</div>
+				<div class="position" data-field="position">{{ data.position or '<span class="placeholder">Job Position</span>' | safe }}</div>
 			</div>
 			<div class="contact-list">
-				<div>{{ get_icon('lucide/map-pin') | safe }}<span>{{ data.location or '<span class="placeholder">Location</span>' | safe }}</span></div>
-				<div>{{ get_icon('lucide/phone') | safe }}<span>{{ data.phone or '<span class="placeholder">Phone</span>' | safe }}</span></div>
-				<div>{{ get_icon('lucide/mail') | safe }}<span>{{ data.email or '<span class="placeholder">Email</span>' | safe }}</span></div>
+				<div>{{ get_icon('lucide/map-pin') | safe }}<span data-field="location">{{ data.location or '<span class="placeholder">Location</span>' | safe }}</span></div>
+				<div>{{ get_icon('lucide/phone') | safe }}<span data-field="phone">{{ data.phone or '<span class="placeholder">Phone</span>' | safe }}</span></div>
+				<div>{{ get_icon('lucide/mail') | safe }}<span data-field="email">{{ data.email or '<span class="placeholder">Email</span>' | safe }}</span></div>
 			</div>
 		</div>
 		<div class="additional-info">
 			<section>
 				<h2 class="section-header">About Me</h2>
-				<p>{{ data.description or '<span class="placeholder">A short bio will appear here.</span>' | safe }}</p>
+				<p data-field="description">{{ data.description or '<span class="placeholder">A short bio will appear here.</span>' | safe }}</p>
 			</section>
 			<section>
 				<h2 class="section-header">Interests</h2>
-				<p>{{ data.interests | default([]) | join(' · ') or '<span class="placeholder">Interests will appear here.</span>' | safe }}</p>
+				<p id="interests-field">{{ data.interests | default([]) | join(' · ') or '<span class="placeholder">Interests will appear here.</span>' | safe }}</p>
 			</section>
 			{% if data.links %}
 			<section class="connect">
@@ -77,8 +78,8 @@
 				<div class="timeline">
 					{% for job in data.experience | default([]) %}
 					<div>
-						<strong>{{ job.company }}</strong>
-						<div>{{ job.start_month }}/{{ job.start_year }} – {% if job.end_year %}{{ job.end_month }}/{{ job.end_year }}{% else %}present{% endif %}</div>
+						<strong data-field="experience.{{ loop.index0 }}.company">{{ job.company }}</strong>
+						<div><span data-field="experience.{{ loop.index0 }}.start_month">{{ job.start_month }}</span>/<span data-field="experience.{{ loop.index0 }}.start_year">{{ job.start_year }}</span> – <span class="end-date"><span data-field="experience.{{ loop.index0 }}.end_month">{{ job.end_month }}</span><span class="end-sep">/</span><span data-field="experience.{{ loop.index0 }}.end_year">{{ job.end_year }}</span></span></div>
 						<div class="badge-list">
 							{% for badge in job.badges %}
 							<span>{{ badge }}</span>
@@ -86,8 +87,8 @@
 						</div>
 					</div>
 					<div>
-						<strong>{{ job.title }}</strong>
-						<p>{{ job.description | join(' ') }}</p>
+						<strong data-field="experience.{{ loop.index0 }}.title">{{ job.title }}</strong>
+						<p data-field="experience.{{ loop.index0 }}.description">{{ job.description | join(' ') }}</p>
 					</div>
 					{% else %}
 					<div class="placeholder">Company</div>
@@ -103,12 +104,12 @@
 				<div class="timeline">
 					{% for edu in data.education | default([]) %}
 					<div>
-						<strong>{{ edu.institution }}</strong>
-						<div>{{ edu.subinstitution }}<br>{{ edu.end_year }}</div>
+						<strong data-field="education.{{ loop.index0 }}.institution">{{ edu.institution }}</strong>
+						<div><span data-field="education.{{ loop.index0 }}.subinstitution">{{ edu.subinstitution }}</span><br><span data-field="education.{{ loop.index0 }}.end_year">{{ edu.end_year }}</span></div>
 					</div>
 					<div>
-						<strong>{{ edu.title }}</strong>
-						<p>{{ edu.description | join(' ') }}</p>
+						<strong data-field="education.{{ loop.index0 }}.title">{{ edu.title }}</strong>
+						<p data-field="education.{{ loop.index0 }}.description">{{ edu.description | join(' ') }}</p>
 					</div>
 					{% else %}
 					<div class="placeholder">Institution</div>
@@ -121,5 +122,9 @@
 			</section>
 		</div>
 	</main>
+	{% if edit_mode %}
+	<script>window.CV_DATA = {{ data | tojson }};</script>
+	<script src="/static/edit.js"></script>
+	{% endif %}
 </body>
 </html>
