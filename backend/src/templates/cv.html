@@ -14,8 +14,8 @@
 	{% if data.theme %}
 	<style>
 		:root {
-			{% if data.theme.dark %}--dark: {{ data.theme.dark }};{% endif %}
-			{% if data.theme.light %}--light: {{ data.theme.light }};{% endif %}
+			{% for key, val in data.theme.items() %}--{{ key }}: {{ val }};
+			{% endfor %}
 		}
 	</style>
 	{% endif %}

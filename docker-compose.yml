@@ -11,13 +11,13 @@ services:
     environment:
       OPENAI_KEY: /run/secrets/openai_key
       DOMAINS_CONFIG: ${DOMAINS_CONFIG:-/config/domains.json}
-      DEFAULT_CV: ${DEFAULT_CV:-/data/cv.yaml}
+      DEFAULT_CV: /data/default.yaml
     secrets:
       - openai_key
     volumes:
       - ./backend/src:/app/src
       - ./config/domains.json:/config/domains.json:ro
-      - ./data:/data:ro
+      - ${DEFAULT_CV:-./data/cv.yaml}:/data/default.yaml:ro
     depends_on:
       - redis
 

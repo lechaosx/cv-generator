@@ -7,6 +7,18 @@
 	--white: #ffffff;
 	--black: #000000;
 
+	--panel-dark: var(--dark);
+	--panel-light: var(--white);
+	--name: var(--dark);
+	--position: var(--light);
+	--header: var(--light);
+	--border: var(--light);
+	--icon: var(--light);
+	--timeline: var(--light);
+	--badge: var(--light);
+	--badge-text: var(--white);
+	--button: var(--light);
+
 	--normal-font: "Roboto", sans-serif;
 	--condensed-font: "Roboto Condensed", sans-serif;
 	--mono-font: "Roboto Mono", sans-serif;
@@ -53,21 +65,21 @@ main {
 
 	> :nth-child(2n + 1) {
 		color: var(--white);
-		background-color: var(--dark);
+		background-color: var(--panel-dark);
 
 		a {
 			color: var(--white);
 		}
 
 		.section-header {
-			color: var(--light);
+			color: var(--header);
 			border-bottom-color: var(--white);
 		}
 	}
 
 	> :nth-child(2n) {
 		color: var(--black);
-		background-color: var(--white);
+		background-color: var(--panel-light);
 
 		a {
 			color: var(--black);
@@ -80,7 +92,7 @@ main {
 	}
 
 	:focus {
-		outline: var(--light) solid;
+		outline: var(--border) solid;
 	}
 }
 
@@ -101,7 +113,7 @@ main {
 	span {
 		flex: 1;
 		padding: 5px 2.5rem 5px 0;
-		border-bottom: 1px solid var(--light);
+		border-bottom: 1px solid var(--border);
 	}
 
 	div:last-child span {
@@ -112,7 +124,7 @@ main {
 		flex-shrink: 0;
 		width: 14px;
 		height: 14px;
-		color: var(--light);
+		color: var(--icon);
 	}
 }
 
@@ -145,7 +157,7 @@ section {
 .title, h1 {
 	font-family: var(--condensed-font);
 	font-weight: bold;
-	color: var(--dark);
+	color: var(--name);
 	font-size: 2.5em;
 }
 
@@ -157,7 +169,7 @@ h1 {
 	font-family: var(--condensed-font);
 	font-weight: bold;
 	text-transform: uppercase;
-	color: var(--light);
+	color: var(--position);
 	font-size: 1.5em;
 }
 
@@ -198,7 +210,7 @@ h1 {
 
 	> :nth-child(2n + 1) {
 		padding-right: 20px;
-		border-right: 1px solid var(--light);
+		border-right: 1px solid var(--timeline);
 		text-align: right;
 		position: relative;
 
@@ -213,7 +225,7 @@ h1 {
 			right: -0.5px;
 			width: 14px;
 			height: 14px;
-			background-color: var(--light);
+			background-color: var(--timeline);
 			border-radius: 50%;
 			transform: translate(50%, -50%);
 		}
@@ -232,8 +244,8 @@ h1 {
 }
 
 .badge-list > * {
-	background-color: var(--light);
-	color: var(--white);
+	background-color: var(--badge);
+	color: var(--badge-text);
 	border-radius: 0.5em;
 	text-align: center;
 	padding: 3px 5px;
@@ -259,12 +271,12 @@ h1 {
 			border-radius: 0.5em;
 			border: none;
 			color: var(--black);
-			background-color: var(--light);
+			background-color: var(--button);
 			cursor: pointer;
 		}
 
 		button:hover {
-			outline: var(--light) solid
+			outline: var(--button) solid
 		}
 	}
 }
@@ -285,14 +297,14 @@ h1 {
 
 		> :nth-child(2n) {
 			color: var(--white);
-			background-color: var(--dark);
+			background-color: var(--panel-dark);
 
 			a {
 				color: var(--white);
 			}
 
 			.section-header {
-				color: var(--light);
+				color: var(--header);
 				border-bottom-color: var(--white);
 			}
 		}
