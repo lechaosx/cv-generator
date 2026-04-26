@@ -1,0 +1,3 @@
+dlabaja.eu {
+	reverse_proxy backend:5000
+}

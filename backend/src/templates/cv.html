@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>{{ data.name }}</title>
+	<link rel="icon" href="{{ data.photo }}">
+	<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+	<div id="root">
+		<main>
+			<div class="photo">
+				<img src="{{ data.photo }}" alt="Profile" width="400">
+			</div>
+			<div class="main-info">
+				<div>
+					<div class="title">{{ data.title_before_name }}</div>
+					<h1>{{ data.name }}</h1>
+					<div class="position">{{ data.position }}</div>
+				</div>
+				<ul class="contact-list">
+					<li class="location">{{ data.location }}</li>
+					<li class="phone">{{ data.phone }}</li>
+					<li class="mail">{{ data.email }}</li>
+				</ul>
+			</div>
+			<div class="additional-info">
+				<section>
+					<h2 class="section-header">About Me</h2>
+					<p>{{ data.description }}</p>
+				</section>
+				<section>
+					<h2 class="section-header">Interests</h2>
+					{{ data.interests | join(' · ') }}
+				</section>
+				{% if data.github or data.linkedin %}
+				<section>
+					<h2 class="section-header">Connect</h2>
+					<div class="connect">
+						{% if data.github %}
+						<a class="github" href="https://{{ data.github }}">{{ data.github }}</a>
+						{% endif %}
+						{% if data.linkedin %}
+						<a class="linkedin" href="https://{{ data.linkedin }}">{{ data.linkedin }}</a>
+						{% endif %}
+					</div>
+				</section>
+				{% endif %}
+				<section class="cv-gen">
+					<h2 class="section-header">Generate your own CV! (BETA)</h2>
+					<form method="GET" action="/">
+						<input type="url" name="url" placeholder="URL with your info" required>
+						<button type="submit">Submit</button>
+					</form>
+					{% if error %}<p class="cv-gen-error">{{ error }}</p>{% endif %}
+				</section>
+			</div>
+			<div>
+				<section>
+					<h2 class="section-header">Work Experience</h2>
+					<div class="timeline">
+						{% for job in data.experience %}
+						<div>
+							<strong>{{ job.company }}</strong>
+							<div>{{ job.start_month }}/{{ job.start_year }} – {% if job.end_year %}{{ job.end_month }}/{{ job.end_year }}{% else %}present{% endif %}</div>
+							<div class="badge-list">
+								{% for badge in job.badges %}
+								<div>{{ badge }}</div>
+								{% endfor %}
+							</div>
+						</div>
+						<div>
+							<strong>{{ job.title }}</strong>
+							<p>{{ job.description | join(' ') }}</p>
+						</div>
+						{% endfor %}
+					</div>
+				</section>
+				<section>
+					<h2 class="section-header">Education</h2>
+					<div class="timeline">
+						{% for edu in data.education %}
+						<div>
+							<strong>{{ edu.institution }}</strong>
+							<div>{{ edu.subinstitution }}<br>{{ edu.end_year }}</div>
+						</div>
+						<div>
+							<strong>{{ edu.title }}</strong>
+							<p>{{ edu.description }}</p>
+						</div>
+						{% endfor %}
+					</div>
+				</section>
+			</div>
+		</main>
+	</div>
+</body>
+</html>

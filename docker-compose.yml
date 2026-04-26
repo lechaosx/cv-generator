@@ -5,7 +5,7 @@ services:
       - redis-data:/data
 
   backend:
-    build: 
+    build:
       context: backend
       target: dev
     environment:
@@ -16,37 +16,14 @@ services:
       - ./backend/src:/app/src
     depends_on:
       - redis
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.backend.rule=PathPrefix(`/api`)
-      - traefik.http.services.backend.loadbalancer.server.port=5000
 
-  frontend:
-    build: 
-      context: frontend
-      target: dev
-    volumes:
-      - ./frontend/public:/app/public
-      - ./frontend/src:/app/src
-    depends_on:
-      - backend
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.frontend.rule=PathPrefix(`/`)
-      - traefik.http.services.frontend.loadbalancer.server.port=3000
-
-  traefik:
-    image: traefik:latest
-    command:
-      - --api.insecure=true
-      - --providers.docker.exposedbydefault=false
+  caddy:
+    image: caddy:alpine
     ports:
       - 80:80
-      - 8080:8080
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile
     depends_on:
-      - frontend
       - backend
 
 volumes:

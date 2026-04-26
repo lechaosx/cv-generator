@@ -24,60 +24,28 @@ services:
       - openai_key
     depends_on:
       - redis
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.backend.rule=Host(`dlabaja.eu`) && PathPrefix(`/api`)
-      - traefik.http.routers.backend.entrypoints=websecure
-      - traefik.http.routers.backend.tls.certresolver=myresolver
-      - traefik.http.services.backend.loadbalancer.server.port=5000
-      - com.centurylinklabs.watchtower.enable=true
     deploy:
       mode: replicated
       replicas: 2
     restart: unless-stopped
-
-  frontend:
-    image: ghcr.io/lechaosx/cv-generator/frontend:prod
-    depends_on:
-      - backend
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.frontend.rule=Host(`dlabaja.eu`)
-      - traefik.http.routers.frontend.entrypoints=websecure
-      - traefik.http.routers.frontend.tls.certresolver=myresolver
-      - traefik.http.services.frontend.loadbalancer.server.port=80
       - com.centurylinklabs.watchtower.enable=true
-    deploy:
-      mode: replicated
-      replicas: 2
-    restart: unless-stopped
 
-  traefik:
-    image: traefik:latest
-    command:
-      - --providers.docker.exposedbydefault=false
-      - --entrypoints.websecure.address=:443
-      - --entrypoints.web.address=:80
-      - --entrypoints.web.http.redirections.entrypoint.to=websecure
-      - --entrypoints.web.http.redirections.entrypoint.scheme=https
-      - --certificatesresolvers.myresolver.acme.tlschallenge=true
-      - --certificatesresolvers.myresolver.acme.email=lechaosx@gmail.com
-      - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
-      - --log.level=INFO
+  caddy:
+    image: caddy:alpine
     ports:
       - 80:80
       - 443:443
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - letsencrypt:/letsencrypt
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile
+      - caddy-data:/data
     depends_on:
-      - frontend
       - backend
     restart: unless-stopped
 
 volumes:
   redis-data-prod:
-  letsencrypt:
+  caddy-data:
 
 secrets:
   openai_key:

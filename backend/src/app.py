@@ -1,6 +1,6 @@
 import os
-import urllib 
 import json
+import random
 
 import flask
 import redis
@@ -10,8 +10,20 @@ import requests
 
 app = flask.Flask(__name__)
 
+DICTIONARY = [
+	"apple", "banana", "cherry", "date", "elderberry",
+	"fig", "grape", "honeydew", "kiwi", "lemon",
+	"mango", "nectarine", "orange", "peach", "quince"
+]
+
+DEFAULT_CV_URL = "https://lechaosx.github.io/cv-data/cv.json"
+CACHE_TTL = 60 * 60 * 24 * 7
+
 with open(os.getenv("OPENAI_KEY"), "r") as file:
 	openai.api_key = file.read().strip()
+
+redis_client = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses=True)
+
 
 class Experience(pydantic.BaseModel):
 	title: str             = pydantic.Field(description="Job title.")
@@ -21,7 +33,7 @@ class Experience(pydantic.BaseModel):
 	end_month: str         = pydantic.Field(description="Ending month of employment. Use two decimal places, like 01 or 12. Make it empty string when not known.")
 	end_year: str          = pydantic.Field(description="Ending year of employment. Make it empty string when not known.")
 	description: list[str] = pydantic.Field(description="Description of the job responsibilities and achievements. When not available or is too short, create a description from the input.")
-	badges: list[str]      = pydantic.Field(description="Skills and technologies assocated with the position.")
+	badges: list[str]      = pydantic.Field(description="Skills and technologies associated with the position.")
 
 class Education(pydantic.BaseModel):
 	title: str          = pydantic.Field(description="Degree title. Use wordy name, like 'Master's Degree' or such.")
@@ -46,42 +58,55 @@ class PersonalInfo(pydantic.BaseModel):
 	experience: list[Experience] = pydantic.Field(description="List of work experiences.")
 	education: list[Education]   = pydantic.Field(description="List of educational qualifications.")
 
-@app.route("/api/extract", methods=['GET'])
-def extract_personal_info():
-	seed = flask.request.args.get('seed')
+
+@app.route("/", methods=['GET'])
+def index():
 	url = flask.request.args.get('url')
+	seed = flask.request.args.get('seed')
 
-	if not url:
-		return { "error": f"Url was not specified!"}, 400
-	
-	redis_client = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses=True)
+	if url and not seed:
+		seed = "-".join(random.choices(DICTIONARY, k=3))
+		return flask.redirect(flask.url_for('index', url=url, seed=seed))
 
+	data, error = get_cv_data(url, seed) if url else (None, None)
+	if data is None:
+		data = requests.get(DEFAULT_CV_URL).json()
+
+	return flask.render_template('cv.html', data=data, url=url or '', error=error)
+
+
+def get_cv_data(url, seed):
 	redis_key = f"{url}:{seed}"
 
-	cached_response = redis_client.get(redis_key)
-	if cached_response:
-		return cached_response, 200
+	try:
+		cached = redis_client.get(redis_key)
+		if cached:
+			return json.loads(cached), None
+	except redis.exceptions.ConnectionError:
+		app.logger.exception("Redis unavailable")
+		return None, "Cache is unavailable — results may differ between page loads."
 
-	response = requests.get(url)
-	if response.status_code != 200:
-		return { "error": f"Failed to fetch data from url '{url}'!"}, response.status_code
+	try:
+		response = requests.get(url, timeout=10)
+		response.raise_for_status()
+	except requests.exceptions.RequestException:
+		app.logger.exception("Failed to fetch URL: %s", url)
+		return None, "Could not fetch the provided URL."
 
-	openai_request_params = {
-		"model": "gpt-4o-mini",
-		"messages": [
-			{"role": "system", "content": "You are an assistant that extracts personal information for a CV."},
-			{"role": "user", "content": response.text}
-		],
-		"response_format": PersonalInfo
-	}
+	try:
+		openai_response = openai.beta.chat.completions.parse(
+			model="gpt-4o-mini",
+			messages=[
+				{"role": "system", "content": "You are an assistant that extracts personal information for a CV."},
+				{"role": "user", "content": response.text}
+			],
+			response_format=PersonalInfo,
+			seed=hash(seed)
+		)
+	except Exception:
+		app.logger.exception("OpenAI extraction failed for URL: %s", url)
+		return None, "Could not extract CV data from the provided URL."
 
-	if seed:
-		openai_request_params["seed"] = hash(seed)
-
-	response = openai.beta.chat.completions.parse(**openai_request_params)
-
-	response_data = response.choices[0].message.parsed.model_dump(mode='json')
-
-	redis_client.set(redis_key, json.dumps(response_data), ex=60 * 60 * 24 * 7)
-
-	return response_data
+	data = openai_response.choices[0].message.parsed.model_dump(mode='json')
+	redis_client.set(redis_key, json.dumps(data), ex=CACHE_TTL)
+	return data, None

@@ -1,21 +1,21 @@
 FROM python:3.12-alpine AS base
 
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
+
 WORKDIR /app
 
-COPY requirements.txt .
-
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-install-project
 
 COPY . .
+RUN uv sync --frozen
 
 ENV PYTHONUNBUFFERED=1
 
 FROM base AS dev
 
-CMD flask --app src/app.py --debug run --host=0.0.0.0
+CMD uv run flask --app src/app.py --debug run --host=0.0.0.0
 
 FROM base AS prod
 
-RUN pip install --no-cache-dir gunicorn
-
-CMD gunicorn --bind=0.0.0.0:5000 src.app:app
+CMD uv run gunicorn --bind=0.0.0.0:5000 src.app:app
