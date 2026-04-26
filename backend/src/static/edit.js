@@ -21,8 +21,9 @@ function entryHasContent(entry, type) {
 		          entry.description?.some(d => d.trim()) || entry.badges?.length);
 	}
 	return !!(entry.institution?.trim() || entry.title?.trim() ||
-	          entry.subinstitution?.trim() || entry.end_year?.trim() ||
-	          entry.description?.some(d => d.trim()));
+	          entry.subinstitution?.trim() || entry.start_month?.trim() ||
+	          entry.start_year?.trim() || entry.end_month?.trim() ||
+	          entry.end_year?.trim() || entry.description?.some(d => d.trim()));
 }
 
 function emptyExpEntry() {
@@ -30,7 +31,7 @@ function emptyExpEntry() {
 }
 
 function emptyEduEntry() {
-	return { institution: '', title: '', subinstitution: '', end_year: '', description: [] };
+	return { institution: '', title: '', subinstitution: '', start_month: '', start_year: '', end_month: '', end_year: '', description: [] };
 }
 
 function ensureGhost(type) {
@@ -148,14 +149,8 @@ function toYaml(obj, indent = 0) {
 
 const style = document.createElement('style');
 style.textContent = `
-	[data-field] { cursor: text; }
-	[data-field]:hover { outline: 1px dashed var(--border); border-radius: 2px; }
-	[data-field][data-placeholder]:empty::before {
-		content: attr(data-placeholder);
-		opacity: .4;
-		font-style: italic;
-		pointer-events: none;
-	}
+	.cv-field { cursor: text; }
+	.cv-field:hover { outline: 1px dashed var(--border); border-radius: 2px; }
 	[contenteditable]:focus { outline: 2px solid var(--border) !important; border-radius: 2px; }
 
 	/* ghost items: whole element faded */
@@ -167,12 +162,14 @@ style.textContent = `
 		opacity: .5;
 		pointer-events: none;
 	}
-	/* ghost ::before: opacity 1 relative to parent so it reads the same as non-ghost placeholders */
+	/* ghost ::before: opacity 1 relative to parent so combined = .5 */
 	.edit-ghost[data-placeholder]:empty::before { opacity: 1; }
 
-	/* always show end-date spans in edit mode */
-	.end-date span { display: inline !important; }
-	.end-date::after { content: none !important; }
+	/* show all date fields in edit mode */
+	.cv-dates .start-part, .cv-dates .end-part { display: inline !important; }
+	.cv-dates .start-month, .cv-dates .sm-sep,
+	.cv-dates .end-month,   .cv-dates .em-sep   { display: inline !important; }
+	.cv-dates .present-text { display: none !important; }
 
 	/* ghost entry — same structure as real entries, just faded */
 	.entry-ghost { opacity: .5; }
@@ -206,40 +203,26 @@ document.head.appendChild(style);
 
 // ── Text editing ──────────────────────────────────────────────────────────────
 
-const PLACEHOLDERS = {
-	'name': 'Full Name', 'position': 'Job Position',
-	'location': 'Location', 'phone': 'Phone', 'email': 'Email',
-	'description': 'Description',
-};
-const SUFFIX_PLACEHOLDERS = {
-	'.company': 'Company', '.title': 'Title',
-	'.description': 'Description', '.institution': 'Institution',
-	'.subinstitution': 'Faculty',
-	'.start_month': 'MM', '.start_year': 'YYYY',
-	'.end_month': 'MM', '.end_year': 'YYYY',
-};
-
-function fieldPlaceholder(field) {
-	if (PLACEHOLDERS[field]) return PLACEHOLDERS[field];
-	for (const [suffix, label] of Object.entries(SUFFIX_PLACEHOLDERS))
-		if (field.endsWith(suffix)) return label;
-	return '…';
-}
-
-function setupEditable(el) {
+function setupEditable(el, path, placeholder) {
 	el.contentEditable = 'true';
-	if (!el.hasAttribute('data-placeholder'))
-		el.setAttribute('data-placeholder', fieldPlaceholder(el.dataset.field));
+	el.classList.add('cv-field');
+	el.setAttribute('data-placeholder', placeholder);
+
+	// Apply state (state is always initialised — from localStorage or CV_DATA)
+	const v = getPath(state, path);
+	if (v != null) {
+		if (Array.isArray(v)) el.textContent = v.join(' ');
+		else { el.innerHTML = ''; el.textContent = v; }
+	}
 
 	el.addEventListener('focus', () => { el.dataset.before = el.textContent; });
 	el.addEventListener('blur', () => {
-		const field = el.dataset.field;
 		let value = el.textContent.trim();
 		if (!value) el.innerHTML = '';
-		if (field.endsWith('.description')) value = value ? [value] : [];
-		setPath(state, field, value);
+		if (path.endsWith('.description')) value = value ? [value] : [];
+		setPath(state, path, value);
 		persist();
-		checkEntry(field);
+		checkEntry(path);
 	});
 	el.addEventListener('keydown', e => {
 		if (e.key === 'Escape') { el.textContent = el.dataset.before || ''; el.blur(); }
@@ -247,14 +230,22 @@ function setupEditable(el) {
 	});
 }
 
-// Apply saved state and setup editing for static fields
-document.querySelectorAll('[data-field]').forEach(el => {
-	if (saved) {
-		const v = getPath(state, el.dataset.field);
-		if (v != null && !Array.isArray(v)) el.textContent = v;
-	}
-	setupEditable(el);
-});
+// Static field map — [getter, statePath, placeholder]
+const FIELD_MAP = [
+	[() => document.querySelectorAll('.main-info .title')[0], 'title_before_name', 'Title'],
+	[() => document.querySelector('h1'),                      'name',              'Full Name'],
+	[() => document.querySelectorAll('.main-info .title')[1], 'title_after_name',  'Title'],
+	[() => document.querySelector('.position'),               'position',          'Job Position'],
+	[() => document.querySelector('.contact-list div:nth-child(1) span'), 'location', 'Location'],
+	[() => document.querySelector('.contact-list div:nth-child(2) span'), 'phone',    'Phone'],
+	[() => document.querySelector('.contact-list div:nth-child(3) span'), 'email',    'Email'],
+	[() => document.querySelector('.additional-info section:first-child p'), 'description', 'Description'],
+];
+
+for (const [getter, path, placeholder] of FIELD_MAP) {
+	const el = getter();
+	if (el) setupEditable(el, path, placeholder);
+}
 
 // ── Ghost list (interests & badges) ──────────────────────────────────────────
 
@@ -293,7 +284,7 @@ function makeGhostList(container, getItems, setItems, makeEl, placeholder = 'Add
 }
 
 // Interests
-const interestsEl = document.getElementById('interests-field');
+const interestsEl = document.querySelector('.additional-info section:nth-child(2) p');
 if (interestsEl) {
 	interestsEl.removeAttribute('data-field');
 	interestsEl.classList.add('interests-list');
@@ -310,24 +301,7 @@ if (interestsEl) {
 	);
 }
 
-// Badges per experience entry
-document.querySelectorAll('[data-field^="experience."][data-field$=".company"]').forEach(el => {
-	const idx = +el.dataset.field.split('.')[1];
-	const badgeList = el.closest('.timeline > div')?.querySelector('.badge-list');
-	if (!badgeList) return;
-	// Remove static badge spans, replace with ghost list
-	badgeList.innerHTML = '';
-	makeGhostList(badgeList,
-		() => state.experience[idx]?.badges || [],
-		v => { if (state.experience[idx]) { state.experience[idx].badges = v; checkEntry(`experience.${idx}.badges`); } },
-		(item) => {
-			const span = document.createElement('span');
-			span.textContent = item;
-			return span;
-		},
-		'Badge'
-	);
-});
+// Badges set up via materializeExpEntry — no discovery needed here
 
 // ── Connect / links ───────────────────────────────────────────────────────────
 
@@ -414,40 +388,40 @@ setupConnectEdit();
 
 // ── Materialize timeline entries ──────────────────────────────────────────────
 
+function mkSpan(cls, path, ph) {
+	const s = document.createElement('span');
+	s.className = cls;
+	setupEditable(s, path, ph);
+	return s;
+}
+
 function materializeExpEntry(idx, timelineEl) {
 	const job = state.experience[idx];
-
 	const left = document.createElement('div');
 
 	const company = document.createElement('strong');
-	company.dataset.field = `experience.${idx}.company`;
-	company.textContent = job.company;
-	setupEditable(company);
+	setupEditable(company, `experience.${idx}.company`, 'Company');
 
-	function makeSpan(field, text) {
-		const s = document.createElement('span');
-		s.dataset.field = field;
-		s.textContent = text || '';
-		setupEditable(s);
-		return s;
-	}
+	const startPart = document.createElement('span');
+	startPart.className = 'start-part';
+	const smSep = document.createElement('span'); smSep.className = 'sm-sep'; smSep.textContent = '/';
+	const rangeSep = document.createElement('span'); rangeSep.className = 'range-sep'; rangeSep.textContent = ' – ';
+	startPart.append(mkSpan('start-month', `experience.${idx}.start_month`, 'MM'), smSep,
+	                 mkSpan('start-year', `experience.${idx}.start_year`,  'YYYY'), rangeSep);
 
-	const endDate = document.createElement('span');
-	endDate.className = 'end-date';
-	const endSep = document.createElement('span');
-	endSep.className = 'end-sep';
-	endSep.textContent = '/';
-	endDate.append(
-		makeSpan(`experience.${idx}.end_month`, job.end_month), endSep,
-		makeSpan(`experience.${idx}.end_year`,  job.end_year)
-	);
+	const endPart = document.createElement('span');
+	endPart.className = 'end-part';
+	const emSep = document.createElement('span'); emSep.className = 'em-sep'; emSep.textContent = '/';
+	endPart.append(mkSpan('end-month', `experience.${idx}.end_month`, 'MM'), emSep,
+	               mkSpan('end-year', `experience.${idx}.end_year`,  'YYYY'));
+
+	const presentText = document.createElement('span');
+	presentText.className = 'present-text';
+	presentText.textContent = 'present';
 
 	const dates = document.createElement('div');
-	dates.append(
-		makeSpan(`experience.${idx}.start_month`, job.start_month), '/',
-		makeSpan(`experience.${idx}.start_year`,  job.start_year),
-		' – ', endDate
-	);
+	dates.className = 'cv-dates';
+	dates.append(startPart, endPart, presentText);
 
 	const badgeList = document.createElement('div');
 	badgeList.className = 'badge-list';
@@ -461,16 +435,10 @@ function materializeExpEntry(idx, timelineEl) {
 	left.append(company, dates, badgeList);
 
 	const right = document.createElement('div');
-
 	const title = document.createElement('strong');
-	title.dataset.field = `experience.${idx}.title`;
-	title.textContent = job.title;
-	setupEditable(title);
-
+	setupEditable(title, `experience.${idx}.title`, 'Title');
 	const desc = document.createElement('p');
-	desc.dataset.field = `experience.${idx}.description`;
-	desc.textContent = job.description.join(' ');
-	setupEditable(desc);
+	setupEditable(desc, `experience.${idx}.description`, 'Description');
 
 	right.append(title, desc);
 	timelineEl.append(left, right);
@@ -478,39 +446,44 @@ function materializeExpEntry(idx, timelineEl) {
 
 function materializeEduEntry(idx, timelineEl) {
 	const edu = state.education[idx];
-
 	const left = document.createElement('div');
 
 	const institution = document.createElement('strong');
-	institution.dataset.field = `education.${idx}.institution`;
-	institution.textContent = edu.institution;
-	setupEditable(institution);
+	setupEditable(institution, `education.${idx}.institution`, 'Institution');
 
-	const subinstitution = document.createElement('span');
-	subinstitution.dataset.field = `education.${idx}.subinstitution`;
-	subinstitution.textContent = edu.subinstitution;
-	setupEditable(subinstitution);
+	const eduSub = document.createElement('div');
+	const eduSubSpan = document.createElement('span');
+	setupEditable(eduSubSpan, `education.${idx}.subinstitution`, 'Faculty');
+	eduSub.append(eduSubSpan);
 
-	const endYear = document.createElement('span');
-	endYear.dataset.field = `education.${idx}.end_year`;
-	endYear.textContent = edu.end_year;
-	setupEditable(endYear);
+	const startPart = document.createElement('span');
+	startPart.className = 'start-part';
+	const smSep2 = document.createElement('span'); smSep2.className = 'sm-sep'; smSep2.textContent = '/';
+	const rangeSep = document.createElement('span'); rangeSep.className = 'range-sep'; rangeSep.textContent = ' – ';
+	startPart.append(mkSpan('start-month', `education.${idx}.start_month`, 'MM'), smSep2,
+	                 mkSpan('start-year',  `education.${idx}.start_year`,  'YYYY'), rangeSep);
 
-	const sub = document.createElement('div');
-	sub.append(subinstitution, document.createElement('br'), endYear);
-	left.append(institution, sub);
+	const endPart = document.createElement('span');
+	endPart.className = 'end-part';
+	const emSep2 = document.createElement('span'); emSep2.className = 'em-sep'; emSep2.textContent = '/';
+	endPart.append(mkSpan('end-month', `education.${idx}.end_month`, 'MM'), emSep2,
+	               mkSpan('end-year',  `education.${idx}.end_year`,  'YYYY'));
+
+	const presentText = document.createElement('span');
+	presentText.className = 'present-text';
+	presentText.textContent = 'present';
+
+	const dates = document.createElement('div');
+	dates.className = 'cv-dates';
+	dates.append(startPart, endPart, presentText);
+
+	left.append(institution, eduSub, dates);
 
 	const right = document.createElement('div');
-
 	const title = document.createElement('strong');
-	title.dataset.field = `education.${idx}.title`;
-	title.textContent = edu.title;
-	setupEditable(title);
-
+	setupEditable(title, `education.${idx}.title`, 'Title');
 	const desc = document.createElement('p');
-	desc.dataset.field = `education.${idx}.description`;
-	desc.textContent = edu.description.join(' ');
-	setupEditable(desc);
+	setupEditable(desc, `education.${idx}.description`, 'Description');
 
 	right.append(title, desc);
 	timelineEl.append(left, right);

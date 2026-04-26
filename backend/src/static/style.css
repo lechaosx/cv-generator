@@ -298,6 +298,16 @@ h1 {
 	font-style: italic;
 }
 
+/* Date range display logic */
+.start-part:has(.start-year:empty) { display: none; }
+.start-part:has(.start-month:empty) .start-month,
+.start-part:has(.start-month:empty) .sm-sep { display: none; }
+.end-part:has(.end-year:empty) { display: none; }
+.end-part:has(.end-month:empty) .end-month,
+.end-part:has(.end-month:empty) .em-sep { display: none; }
+.present-text { display: none; }
+.cv-dates:has(.start-year:not(:empty)):has(.end-year:empty) .present-text { display: inline; }
+
 /* Default: dark */
 main > * {
 	--bg:            var(--panel-dark);
