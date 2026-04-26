@@ -22,7 +22,17 @@
 </head>
 <body>
 	<main>
-		<div class="photo"><img src="{{ data.photo or '/static/placeholder.svg' }}" alt="Profile" width="400"></div>
+		<div class="photo">
+			{% if data.photo %}
+			<img src="{{ data.photo }}" alt="Profile" width="400">
+			{% else %}
+			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+				<circle cx="50" cy="50" r="50" fill="var(--white)"/>
+				<circle cx="50" cy="38" r="18" fill="var(--light)"/>
+				<ellipse cx="50" cy="90" rx="30" ry="22" fill="var(--light)"/>
+			</svg>
+			{% endif %}
+		</div>
 		<div class="main-info">
 			<div>
 				<div class="title">{{ data.title_before_name }}</div>
@@ -30,9 +40,9 @@
 				<div class="position">{{ data.position or '<span class="placeholder">Job Position</span>' | safe }}</div>
 			</div>
 			<div class="contact-list">
-				<div>{{ get_icon('lucide/map-pin') | safe }}{{ data.location or '<span class="placeholder">Location</span>' | safe }}</div>
-				<div>{{ get_icon('lucide/phone') | safe }}{{ data.phone or '<span class="placeholder">Phone</span>' | safe }}</div>
-				<div>{{ get_icon('lucide/mail') | safe }}{{ data.email or '<span class="placeholder">Email</span>' | safe }}</div>
+				<div>{{ get_icon('lucide/map-pin') | safe }}<span>{{ data.location or '<span class="placeholder">Location</span>' | safe }}</span></div>
+				<div>{{ get_icon('lucide/phone') | safe }}<span>{{ data.phone or '<span class="placeholder">Phone</span>' | safe }}</span></div>
+				<div>{{ get_icon('lucide/mail') | safe }}<span>{{ data.email or '<span class="placeholder">Email</span>' | safe }}</span></div>
 			</div>
 		</div>
 		<div class="additional-info">

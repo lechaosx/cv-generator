@@ -84,28 +84,32 @@ main {
 	}
 }
 
-.photo img {
+.photo img,
+.photo svg {
 	width: 100%;
 	border-radius: 50%;
 }
 
 .contact-list {
 	div {
-		position: relative;
-		padding: 5px 2.5rem 5px 0;
-		border-bottom: 1px solid var(--light);
+		display: flex;
+		align-items: center;
+		gap: 8px;
 		margin-right: -2.5rem;
 	}
 
-	div:last-child {
+	span {
+		flex: 1;
+		padding: 5px 2.5rem 5px 0;
+		border-bottom: 1px solid var(--light);
+	}
+
+	div:last-child span {
 		border-bottom: none;
 	}
 
 	svg {
-		position: absolute;
-		left: -22px;
-		top: 50%;
-		transform: translateY(-50%);
+		flex-shrink: 0;
 		width: 14px;
 		height: 14px;
 		color: var(--light);
@@ -311,8 +315,14 @@ h1 {
 		}
 	}
 
-	.contact-list div {
-		margin-right: 0;
+	.contact-list {
+		div {
+			margin-right: 0;
+		}
+
+		span {
+			padding-right: 0;
+		}
 	}
 
 	.section-header {
