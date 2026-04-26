@@ -10,6 +10,26 @@ import requests
 
 app = flask.Flask(__name__)
 
+ICONIFY_URL = "https://api.iconify.design/{name}.svg?color=currentColor"
+
+icon_cache = {}
+
+def get_icon(name):
+	if name not in icon_cache:
+		url = ICONIFY_URL.format(name=name)
+		try:
+			response = requests.get(url, timeout=5)
+			if response.ok:
+				icon_cache[name] = response.text
+				app.logger.info("Fetched icon '%s'", name)
+			else:
+				app.logger.warning("Icon '%s' not found (status %s)", name, response.status_code)
+		except requests.exceptions.RequestException:
+			app.logger.exception("Failed to fetch icon '%s'", name)
+	return icon_cache.get(name, "")
+
+app.jinja_env.globals['get_icon'] = get_icon
+
 DICTIONARY = [
 	"apple", "banana", "cherry", "date", "elderberry",
 	"fig", "grape", "honeydew", "kiwi", "lemon",
@@ -53,8 +73,7 @@ class PersonalInfo(pydantic.BaseModel):
 	photo: str                   = pydantic.Field(description="URL of the profile photo.")
 	description: str             = pydantic.Field(description="A brief personal description or bio. Make something up if not directly available.")
 	interests: list[str]         = pydantic.Field(description="List of personal interests or hobbies.")
-	github: str                  = pydantic.Field(description="GitHub profile URL without the http/https prefix.")
-	linkedin: str                = pydantic.Field(description="LinkedIn profile URL without the http/https prefix.")
+	links: dict[str, str]        = pydantic.Field(description="Social and web profile links. Key is the platform name in lowercase (e.g. 'github', 'linkedin', 'twitter'), value is the URL without the http/https prefix.")
 	experience: list[Experience] = pydantic.Field(description="List of work experiences.")
 	education: list[Education]   = pydantic.Field(description="List of educational qualifications.")
 

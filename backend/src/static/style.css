@@ -92,30 +92,25 @@ main {
 }
 
 .contact-list {
-	li {
-		padding: 5px 0 5px 0;
+	div {
+		position: relative;
+		padding: 5px 0;
 		border-bottom: 1px solid var(--light);
 		margin-right: -2.5rem;
 	}
 
-	li:last-child {
+	div:last-child {
 		border-bottom: none;
 	}
 
-	li::marker {
+	svg {
+		position: absolute;
+		left: -22px;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 14px;
+		height: 14px;
 		color: var(--light);
-	}
-
-	.location {
-		list-style-image: url("icons/location.svg");
-	}
-
-	.phone {
-		list-style-image: url("icons/phone.svg");
-	}
-
-	.mail {
-		list-style-image: url("icons/mail.svg");
 	}
 }
 
@@ -170,16 +165,16 @@ h1 {
 	flex-direction: column;
 	gap: 0.5rem;
 
-	a::before {
-		padding-right: 0.5rem;
+	a {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 	}
 
-	.github::before {
-		content: url("icons/github.svg");
-	}
-
-	.linkedin::before {
-		content: url("icons/linkedin.svg");
+	svg {
+		flex-shrink: 0;
+		width: 14px;
+		height: 14px;
 	}
 }
 
@@ -298,7 +293,7 @@ h1 {
 		color: var(--white);
 	}
 
-	.contact-list li {
+	.contact-list div {
 		margin-right: 0;
 	}
 

@@ -19,11 +19,11 @@
 					<h1>{{ data.name or '<span class="placeholder">Full Name</span>' | safe }}</h1>
 					<div class="position">{{ data.position or '<span class="placeholder">Job Position</span>' | safe }}</div>
 				</div>
-				<ul class="contact-list">
-					<li class="location">{{ data.location or '<span class="placeholder">Location</span>' | safe }}</li>
-					<li class="phone">{{ data.phone or '<span class="placeholder">Phone</span>' | safe }}</li>
-					<li class="mail">{{ data.email or '<span class="placeholder">Email</span>' | safe }}</li>
-				</ul>
+				<div class="contact-list">
+					<div>{{ get_icon('lucide/map-pin') | safe }}{{ data.location or '<span class="placeholder">Location</span>' | safe }}</div>
+					<div>{{ get_icon('lucide/phone') | safe }}{{ data.phone or '<span class="placeholder">Phone</span>' | safe }}</div>
+					<div>{{ get_icon('lucide/mail') | safe }}{{ data.email or '<span class="placeholder">Email</span>' | safe }}</div>
+				</div>
 			</div>
 			<div class="additional-info">
 				<section>
@@ -34,16 +34,13 @@
 					<h2 class="section-header">Interests</h2>
 					{{ data.interests | default([]) | join(' · ') or '<span class="placeholder">Interests will appear here.</span>' | safe }}
 				</section>
-				{% if data.github or data.linkedin %}
+				{% if data.links %}
 				<section>
 					<h2 class="section-header">Connect</h2>
 					<div class="connect">
-						{% if data.github %}
-						<a class="github" href="https://{{ data.github }}">{{ data.github }}</a>
-						{% endif %}
-						{% if data.linkedin %}
-						<a class="linkedin" href="https://{{ data.linkedin }}">{{ data.linkedin }}</a>
-						{% endif %}
+						{% for name, url in data.links.items() %}
+						<a href="https://{{ url }}">{{ get_icon('simple-icons/' + name) | safe }}{{ url }}</a>
+						{% endfor %}
 					</div>
 				</section>
 				{% endif %}
