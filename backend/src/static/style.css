@@ -1,23 +1,44 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
 
 :root {
+	/* Base palette */
 	--background: #2a2a2e;
 	--dark: #283649;
 	--light: #9c7843;
 	--white: #ffffff;
 	--black: #000000;
 
+	/* Panel backgrounds */
 	--panel-dark: var(--dark);
 	--panel-light: var(--white);
-	--name: var(--dark);
-	--position: var(--light);
-	--header: var(--light);
-	--border: var(--light);
-	--icon: var(--light);
-	--timeline: var(--light);
-	--badge: var(--light);
-	--badge-text: var(--white);
-	--button: var(--light);
+
+	/* Component colors — dark and light variants, all fall back to base palette */
+	--text-dark:        var(--white);
+	--text-light:       var(--black);
+	--link-dark:        var(--white);
+	--link-light:       var(--black);
+	--header-border-dark:  var(--white);
+	--header-border-light: var(--black);
+	--name-dark:        var(--white);
+	--name-light:       var(--dark);
+	--position-dark:    var(--light);
+	--position-light:   var(--light);
+	--header-dark:      var(--light);
+	--header-light:     var(--black);
+	--border-dark:      var(--light);
+	--border-light:     var(--light);
+	--icon-dark:        var(--light);
+	--icon-light:       var(--light);
+	--timeline-dark:    var(--light);
+	--timeline-light:   var(--light);
+	--badge-dark:       var(--light);
+	--badge-light:      var(--light);
+	--badge-text-dark:  var(--white);
+	--badge-text-light: var(--white);
+	--button-dark:           var(--light);
+	--button-light:          var(--light);
+	--button-text-dark:      var(--black);
+	--button-text-light:     var(--black);
 
 	--normal-font: "Roboto", sans-serif;
 	--condensed-font: "Roboto Condensed", sans-serif;
@@ -49,46 +70,29 @@ code {
 main {
 	max-width: 60rem;
 	display: grid;
-	grid-template-columns: 1fr 2fr;
+	grid-template-columns: 1fr;
 	text-align: justify;
 	hyphens: auto;
 
 	> * {
 		padding-left: 2.5rem;
 		padding-right: 2.5rem;
+		background-color: var(--bg);
+		color: var(--text);
+
+		a {
+			color: var(--link);
+		}
+
+		.section-header {
+			color: var(--header);
+			border-bottom-color: var(--header-border);
+		}
 	}
 
 	> :nth-child(-n + 2) {
 		padding-top: 2.5rem;
 		padding-bottom: 2.5rem;
-	}
-
-	> :nth-child(2n + 1) {
-		color: var(--white);
-		background-color: var(--panel-dark);
-
-		a {
-			color: var(--white);
-		}
-
-		.section-header {
-			color: var(--header);
-			border-bottom-color: var(--white);
-		}
-	}
-
-	> :nth-child(2n) {
-		color: var(--black);
-		background-color: var(--panel-light);
-
-		a {
-			color: var(--black);
-		}
-
-		.section-header {
-			color: var(--black);
-			border-bottom-color: var(--black);
-		}
 	}
 
 	:focus {
@@ -107,12 +111,12 @@ main {
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		margin-right: -2.5rem;
+		margin-right: 0;
 	}
 
 	span {
 		flex: 1;
-		padding: 5px 2.5rem 5px 0;
+		padding: 5px 0;
 		border-bottom: 1px solid var(--border);
 	}
 
@@ -137,16 +141,18 @@ section {
 	font-size: 1.17em;
 	text-transform: uppercase;
 	border-bottom: 1px solid;
-	margin: 0 -2.5rem 20px 0;
+	margin: 0 0 20px 0;
 }
 
 .main-info {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	flex-wrap: wrap;
+	gap: 1rem;
 
 	> :first-child {
-		flex: 1 1 0;
+		flex: 1 1 auto;
 	}
 
 	.contact-list {
@@ -270,13 +276,13 @@ h1 {
 			padding: 6px 10px;
 			border-radius: 0.5em;
 			border: none;
-			color: var(--black);
+			color: var(--button-text);
 			background-color: var(--button);
 			cursor: pointer;
 		}
 
 		button:hover {
-			outline: var(--button) solid
+			outline: var(--button) solid;
 		}
 	}
 }
@@ -291,54 +297,106 @@ h1 {
 	font-style: italic;
 }
 
-@media screen and (max-width: 80rem) {
+/* Default: dark */
+main > * {
+	--bg:            var(--panel-dark);
+	--text:          var(--text-dark);
+	--link:          var(--link-dark);
+	--name:          var(--name-dark);
+	--position:      var(--position-dark);
+	--header:        var(--header-dark);
+	--header-border: var(--header-border-dark);
+	--border:        var(--border-dark);
+	--icon:          var(--icon-dark);
+	--timeline:      var(--timeline-dark);
+	--badge:         var(--badge-dark);
+	--badge-text:    var(--badge-text-dark);
+	--button:        var(--button-dark);
+	--button-text:   var(--button-text-dark);
+}
+
+/* Light preference override */
+@media (prefers-color-scheme: light) {
+	main > * {
+		--bg:            var(--panel-light);
+		--text:          var(--text-light);
+		--link:          var(--link-light);
+		--name:          var(--name-light);
+		--position:      var(--position-light);
+		--header:        var(--header-light);
+		--header-border: var(--header-border-light);
+		--border:        var(--border-light);
+		--icon:          var(--icon-light);
+		--timeline:      var(--timeline-light);
+		--badge:         var(--badge-light);
+		--badge-text:    var(--badge-text-light);
+		--button:        var(--button-light);
+		--button-text:   var(--button-text-light);
+	}
+}
+
+/* === Desktop / print === */
+
+@media (min-width: 80rem), print {
 	main {
-		grid-template-columns: 1fr;
-
-		> :nth-child(2n) {
-			color: var(--white);
-			background-color: var(--panel-dark);
-
-			a {
-				color: var(--white);
-			}
-
-			.section-header {
-				color: var(--header);
-				border-bottom-color: var(--white);
-			}
-		}
+		grid-template-columns: 1fr 2fr;
 	}
 
-	.title, h1 {
-		color: var(--white);
+	main > :nth-child(2n + 1) {
+		--bg:            var(--panel-dark);
+		--text:          var(--text-dark);
+		--link:          var(--link-dark);
+		--name:          var(--name-dark);
+		--position:      var(--position-dark);
+		--header:        var(--header-dark);
+		--header-border: var(--header-border-dark);
+		--border:        var(--border-dark);
+		--icon:          var(--icon-dark);
+		--timeline:      var(--timeline-dark);
+		--badge:         var(--badge-dark);
+		--badge-text:    var(--badge-text-dark);
+		--button:        var(--button-dark);
+		--button-text:   var(--button-text-dark);
+	}
+
+	main > :nth-child(2n) {
+		--bg:            var(--panel-light);
+		--text:          var(--text-light);
+		--link:          var(--link-light);
+		--name:          var(--name-light);
+		--position:      var(--position-light);
+		--header:        var(--header-light);
+		--header-border: var(--header-border-light);
+		--border:        var(--border-light);
+		--icon:          var(--icon-light);
+		--timeline:      var(--timeline-light);
+		--badge:         var(--badge-light);
+		--badge-text:    var(--badge-text-light);
+		--button:        var(--button-light);
+		--button-text:   var(--button-text-light);
 	}
 
 	.main-info {
-		flex-wrap: wrap;
-		gap: 1rem;
+		flex-wrap: nowrap;
+		gap: 0;
 
-		> * {
-			flex: 1 1 auto;
-		}
-
-		.contact-list {
-			min-width: max-content;
+		> :first-child {
+			flex: 1 1 0;
 		}
 	}
 
 	.contact-list {
 		div {
-			margin-right: 0;
+			margin-right: -2.5rem;
 		}
 
 		span {
-			padding-right: 0;
+			padding-right: 2.5rem;
 		}
 	}
 
 	.section-header {
-		margin-right: 0;
+		margin-right: -2.5rem;
 	}
 }
 

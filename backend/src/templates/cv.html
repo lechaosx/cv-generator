@@ -14,7 +14,7 @@
 	{% if data.theme %}
 	<style>
 		:root {
-			{% for key, val in data.theme.items() %}--{{ key }}: {{ val }};
+			{% for key, val in data.theme.items() %}--{{ key }}: {{ 'var(' + val + ')' if val.startswith('--') else val }};
 			{% endfor %}
 		}
 	</style>
