@@ -259,6 +259,7 @@ h1 {
 }
 
 .cv-gen {
+	display: none;
 	margin-top: auto;
 
 	form {
@@ -336,6 +337,12 @@ main > * {
 }
 
 /* === Desktop / print === */
+
+@media (min-width: 80rem) {
+	.cv-gen {
+		display: block;
+	}
+}
 
 @media (min-width: 80rem), print {
 	main {
