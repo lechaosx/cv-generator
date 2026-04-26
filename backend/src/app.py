@@ -7,6 +7,7 @@ import redis
 import openai
 import pydantic
 import requests
+import yaml
 
 app = flask.Flask(__name__)
 app.jinja_env.trim_blocks = True
@@ -44,9 +45,9 @@ CACHE_TTL = 60 * 60 * 24 * 7
 
 def load_cv(path_or_url):
 	if path_or_url.startswith(('http://', 'https://')):
-		return requests.get(path_or_url).json()
+		return yaml.safe_load(requests.get(path_or_url).text)
 	with open(path_or_url) as f:
-		return json.load(f)
+		return yaml.safe_load(f)
 
 def load_domains():
 	if not DOMAINS_CONFIG:

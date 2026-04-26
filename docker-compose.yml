@@ -11,7 +11,7 @@ services:
     environment:
       OPENAI_KEY: /run/secrets/openai_key
       DOMAINS_CONFIG: /config/domains.json
-      DEFAULT_CV: /data/cv.json
+      DEFAULT_CV: /data/cv.yaml
     secrets:
       - openai_key
     volumes:
