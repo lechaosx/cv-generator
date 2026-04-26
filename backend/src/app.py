@@ -9,6 +9,8 @@ import pydantic
 import requests
 
 app = flask.Flask(__name__)
+app.jinja_env.trim_blocks = True
+app.jinja_env.lstrip_blocks = True
 
 ICONIFY_URL = "https://api.iconify.design/{name}.svg?color=currentColor"
 
