@@ -34,7 +34,7 @@
 			</section>
 			<section>
 				<h2 class="section-header">Interests</h2>
-				{{ data.interests | default([]) | join(' · ') or '<span class="placeholder">Interests will appear here.</span>' | safe }}
+				<p>{{ data.interests | default([]) | join(' · ') or '<span class="placeholder">Interests will appear here.</span>' | safe }}</p>
 			</section>
 			{% if data.links %}
 			<section class="connect">
