@@ -112,6 +112,12 @@ class PersonalInfo(pydantic.BaseModel):
 	education: list[Education]   = pydantic.Field(description="List of educational qualifications.")
 
 
+@app.route("/check-domain")
+def check_domain():
+    domain = flask.request.args.get("domain", "").split(":")[0]
+    return ("", 200) if domain in domains else ("", 403)
+
+
 @app.route("/", methods=['GET'])
 def index():
 	url = flask.request.args.get('url')
