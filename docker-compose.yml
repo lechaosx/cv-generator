@@ -10,8 +10,8 @@ services:
       target: dev
     environment:
       OPENAI_KEY: /run/secrets/openai_key
-      DOMAINS_CONFIG: /config/domains.json
-      DEFAULT_CV: /data/cv.yaml
+      DOMAINS_CONFIG: ${DOMAINS_CONFIG:-/config/domains.json}
+      DEFAULT_CV: ${DEFAULT_CV:-/data/cv.yaml}
     secrets:
       - openai_key
     volumes:

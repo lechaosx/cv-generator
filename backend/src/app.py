@@ -48,7 +48,7 @@ CACHE_TTL = 60 * 60 * 24 * 7
 
 def load_cv(path_or_url):
 	if path_or_url.startswith(('http://', 'https://')):
-		data = yaml.safe_load(requests.get(path_or_url).text)
+		data = yaml.safe_load(requests.get(path_or_url).content)
 		if data.get('photo') and not data['photo'].startswith(('http://', 'https://')):
 			data['photo'] = urljoin(path_or_url, data['photo'])
 	else:
