@@ -11,6 +11,14 @@
 	<title>{{ data.name or 'CV' }}</title>
 	<link rel="icon" href="{{ data.photo or '/static/placeholder.svg' }}">
 	<link rel="stylesheet" href="/static/style.css">
+	{% if data.theme %}
+	<style>
+		:root {
+			{% if data.theme.dark %}--dark: {{ data.theme.dark }};{% endif %}
+			{% if data.theme.light %}--light: {{ data.theme.light }};{% endif %}
+		}
+	</style>
+	{% endif %}
 </head>
 <body>
 	<main>

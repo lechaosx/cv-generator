@@ -20,8 +20,11 @@ services:
     image: ghcr.io/lechaosx/cv-generator/backend:prod
     environment:
       OPENAI_KEY: /run/secrets/openai_key
+      DOMAINS_CONFIG: /config/domains.json
     secrets:
       - openai_key
+    volumes:
+      - ./config/domains.json:/config/domains.json:ro
     depends_on:
       - redis
     deploy:

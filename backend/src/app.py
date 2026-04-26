@@ -38,8 +38,27 @@ DICTIONARY = [
 	"mango", "nectarine", "orange", "peach", "quince"
 ]
 
-DEFAULT_CV_URL = "https://lechaosx.github.io/cv-data/cv.json"
+DOMAINS_CONFIG = os.getenv('DOMAINS_CONFIG')
+DEFAULT_CV = os.getenv('DEFAULT_CV')
 CACHE_TTL = 60 * 60 * 24 * 7
+
+def load_cv(path_or_url):
+	if path_or_url.startswith(('http://', 'https://')):
+		return requests.get(path_or_url).json()
+	with open(path_or_url) as f:
+		return json.load(f)
+
+def load_domains():
+	if not DOMAINS_CONFIG:
+		return {}
+	try:
+		with open(DOMAINS_CONFIG) as f:
+			return json.load(f)
+	except (FileNotFoundError, json.JSONDecodeError):
+		app.logger.warning("Could not load domains config from %s", DOMAINS_CONFIG)
+		return {}
+
+domains = load_domains()
 
 with open(os.getenv("OPENAI_KEY"), "r") as file:
 	openai.api_key = file.read().strip()
@@ -89,9 +108,12 @@ def index():
 		seed = "-".join(random.choices(DICTIONARY, k=3))
 		return flask.redirect(flask.url_for('index', url=url, seed=seed))
 
-	data, error = get_cv_data(url, seed) if url else (None, None)
-	if data is None and not error:
-		data = requests.get(DEFAULT_CV_URL).json()
+	if url:
+		data, error = get_cv_data(url, seed)
+	else:
+		host = flask.request.host.split(':')[0]
+		data = load_cv(source) if (source := domains.get(host) or DEFAULT_CV) else None
+		error = None
 
 	return flask.render_template('cv.html', data=data, url=url or '', error=error)
 

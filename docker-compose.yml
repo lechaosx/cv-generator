@@ -10,10 +10,14 @@ services:
       target: dev
     environment:
       OPENAI_KEY: /run/secrets/openai_key
+      DOMAINS_CONFIG: /config/domains.json
+      DEFAULT_CV: /data/cv.json
     secrets:
       - openai_key
     volumes:
       - ./backend/src:/app/src
+      - ./config/domains.json:/config/domains.json:ro
+      - ./data:/data:ro
     depends_on:
       - redis
 
