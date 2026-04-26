@@ -92,7 +92,7 @@ main {
 .contact-list {
 	div {
 		position: relative;
-		padding: 5px 0;
+		padding: 5px 2.5rem 5px 0;
 		border-bottom: 1px solid var(--light);
 		margin-right: -2.5rem;
 	}
@@ -129,8 +129,12 @@ section {
 	justify-content: space-between;
 	align-items: center;
 
-	> * {
-		flex: 0 0 33.33%;
+	> :first-child {
+		flex: 1 1 0;
+	}
+
+	.contact-list {
+		flex: 0 0 max-content;
 	}
 }
 
@@ -292,6 +296,19 @@ h1 {
 
 	.title, h1 {
 		color: var(--white);
+	}
+
+	.main-info {
+		flex-wrap: wrap;
+		gap: 1rem;
+
+		> * {
+			flex: 1 1 auto;
+		}
+
+		.contact-list {
+			min-width: max-content;
+		}
 	}
 
 	.contact-list div {
