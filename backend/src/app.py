@@ -1,6 +1,9 @@
 import os
 import json
 import random
+import base64
+import mimetypes
+from urllib.parse import urljoin
 
 import flask
 import redis
@@ -45,9 +48,18 @@ CACHE_TTL = 60 * 60 * 24 * 7
 
 def load_cv(path_or_url):
 	if path_or_url.startswith(('http://', 'https://')):
-		return yaml.safe_load(requests.get(path_or_url).text)
-	with open(path_or_url) as f:
-		return yaml.safe_load(f)
+		data = yaml.safe_load(requests.get(path_or_url).text)
+		if data.get('photo') and not data['photo'].startswith(('http://', 'https://')):
+			data['photo'] = urljoin(path_or_url, data['photo'])
+	else:
+		with open(path_or_url) as f:
+			data = yaml.safe_load(f)
+		if data.get('photo') and not data['photo'].startswith(('http://', 'https://', 'data:')):
+			photo_path = os.path.join(os.path.dirname(path_or_url), data['photo'])
+			mime, _ = mimetypes.guess_type(photo_path)
+			with open(photo_path, 'rb') as f:
+				data['photo'] = f"data:{mime};base64,{base64.b64encode(f.read()).decode()}"
+	return data
 
 def load_domains():
 	if not DOMAINS_CONFIG:
