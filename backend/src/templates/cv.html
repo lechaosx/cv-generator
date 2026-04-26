@@ -90,7 +90,7 @@
 						</div>
 						<div>
 							<strong>{{ edu.title }}</strong>
-							<p>{{ edu.description }}</p>
+							<p>{{ edu.description | join(' ') }}</p>
 						</div>
 						{% else %}
 						<div class="placeholder">Institution</div>

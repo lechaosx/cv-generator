@@ -60,7 +60,7 @@ class Education(pydantic.BaseModel):
 	institution: str    = pydantic.Field(description="Institution name, full university name.")
 	subinstitution: str = pydantic.Field(description="Sub-institution, faculty or department, if applicable.")
 	end_year: str       = pydantic.Field(description="Year of graduation. Make it empty string when not known.")
-	description: str    = pydantic.Field(description="Description of studies or achievements. When not available or is too short, try to come up with something from the data.")
+	description: list[str] = pydantic.Field(description="Description of studies or achievements. When not available or is too short, try to come up with something from the data.")
 
 class PersonalInfo(pydantic.BaseModel):
 	title_before_name: str       = pydantic.Field(description="Title before the person's name (Ing., Bc.). Leave empty when not available.")
