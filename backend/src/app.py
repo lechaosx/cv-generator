@@ -69,7 +69,7 @@ def index():
 		return flask.redirect(flask.url_for('index', url=url, seed=seed))
 
 	data, error = get_cv_data(url, seed) if url else (None, None)
-	if data is None:
+	if data is None and not error:
 		data = requests.get(DEFAULT_CV_URL).json()
 
 	return flask.render_template('cv.html', data=data, url=url or '', error=error)

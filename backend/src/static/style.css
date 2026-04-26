@@ -274,6 +274,11 @@ h1 {
 	color: #e07070;
 }
 
+.placeholder {
+	opacity: 0.35;
+	font-style: italic;
+}
+
 @media screen and (max-width: 80rem) {
 	main {
 		grid-template-columns: 1fr;
