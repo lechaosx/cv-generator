@@ -124,6 +124,7 @@
 		</div>
 	</main>
 	{% if edit_mode %}
+	<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
 	<script>window.CV_DATA = {{ data | tojson }};</script>
 	<script src="/static/edit.js"></script>
 	{% endif %}

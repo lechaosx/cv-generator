@@ -13,60 +13,81 @@ function persist() {
 	localStorage.setItem(COLORS_KEY, JSON.stringify(themeColors));
 }
 
-function entryHasContent(entry, type) {
-	if (type === 'experience') {
-		return !!(entry.company?.trim() || entry.title?.trim() ||
-		          entry.start_month?.trim() || entry.start_year?.trim() ||
-		          entry.end_month?.trim() || entry.end_year?.trim() ||
-		          entry.description?.some(d => d.trim()) || entry.badges?.length);
+// Generic content check — works for any entry shape.
+function isEntryEmpty(entry) {
+	if (!entry || typeof entry !== 'object') return true;
+	for (const v of Object.values(entry)) {
+		if (v == null) continue;
+		if (typeof v === 'string') { if (v.trim()) return false; continue; }
+		if (Array.isArray(v) && v.some(x => typeof x === 'string' ? x.trim() : (x && typeof x === 'object'))) return false;
 	}
-	return !!(entry.institution?.trim() || entry.title?.trim() ||
-	          entry.subinstitution?.trim() || entry.start_month?.trim() ||
-	          entry.start_year?.trim() || entry.end_month?.trim() ||
-	          entry.end_year?.trim() || entry.description?.some(d => d.trim()));
+	return true;
 }
 
-function emptyExpEntry() {
-	return { company: '', title: '', start_month: '', start_year: '', end_month: '', end_year: '', description: [], badges: [] };
-}
+// ── List state machine (REAL / DRAFT / EMPTY) ─────────────────────────────────
+//
+// Each editable list shares the same lifecycle:
+//   REAL  — fully usable entry: kept in original position
+//   DRAFT — partially filled: kept in original position (no data loss)
+//   EMPTY — nothing filled: dropped (one trailing empty slot is appended when no DRAFT exists)
+//
+// Components plug in their own predicates + an "empty entry" factory.
 
-function emptyEduEntry() {
-	return { institution: '', title: '', subinstitution: '', start_month: '', start_year: '', end_month: '', end_year: '', description: [] };
-}
-
-function ensureGhost(type) {
-	const list = state[type];
-	const last = list[list.length - 1];
-	if (!last || entryHasContent(last, type)) {
-		list.push(type === 'experience' ? emptyExpEntry() : emptyEduEntry());
-		return true;
+function normalizeList(arr, isReal, isEmpty, makeEmpty) {
+	if (!Array.isArray(arr)) arr = [];
+	const result = [];
+	let hasDraft = false;
+	for (const item of arr) {
+		if (isReal(item)) result.push(item);
+		else if (!isEmpty(item)) { result.push(item); hasDraft = true; }
 	}
-	return false;
+	if (!hasDraft) result.push(makeEmpty());
+	return result;
 }
 
-function checkEntry(field) {
-	const m = field.match(/^(experience|education)\.(\d+)\./);
-	if (!m) return;
-	const type = m[1], idx = +m[2];
-	const list = state[type];
-	const entry = list?.[idx];
-	if (!entry) return;
+const isStringReal  = s => !!(s && String(s).trim());
+const isStringEmpty = s => !s || !String(s).trim();
+const makeEmptyStr  = () => '';
 
-	if (idx === list.length - 1) {
-		// Last entry is the ghost — if it now has content, spawn a new ghost
-		if (entryHasContent(entry, type)) {
-			if (ensureGhost(type)) { persist(); timelineRenderers[type]?.(); }
-		}
-		return;
-	}
-
-	// Non-ghost entry: remove if empty
-	if (!entryHasContent(entry, type)) {
-		list.splice(idx, 1);
-		persist();
-		timelineRenderers[type]?.();
-	}
+function normalizeInterests() {
+	state.interests = normalizeList(state.interests, isStringReal, isStringEmpty, makeEmptyStr);
 }
+
+function normalizeBadges(idx) {
+	const job = state.experience?.[idx];
+	if (job) job.badges = normalizeList(job.badges, isStringReal, isStringEmpty, makeEmptyStr);
+}
+
+function normalizeLinks() {
+	let arr = state.links;
+	if (!Array.isArray(arr) && arr && typeof arr === 'object') {
+		arr = Object.entries(arr).map(([platform, url]) => ({ platform: String(platform || ''), url: String(url || '') }));
+	}
+	state.links = normalizeList(arr,
+		l => !!((l.platform || '').trim() && (l.url || '').trim()),
+		l => !(l.platform || '').trim() && !(l.url || '').trim(),
+		() => ({ platform: '', url: '' })
+	);
+}
+
+function normalizeExperience() {
+	state.experience = normalizeList(state.experience,
+		e => !!(e.company?.trim() && e.title?.trim()),
+		isEntryEmpty,
+		() => ({ company: '', title: '', start_month: '', start_year: '', end_month: '', end_year: '', description: [], badges: [] })
+	);
+}
+
+function normalizeEducation() {
+	state.education = normalizeList(state.education,
+		e => !!(e.institution?.trim() && e.title?.trim()),
+		isEntryEmpty,
+		() => ({ institution: '', title: '', subinstitution: '', start_month: '', start_year: '', end_month: '', end_year: '', description: [] })
+	);
+}
+
+function syncExperience() { normalizeExperience(); persist(); timelineRenderers.experience?.(); }
+function syncEducation()  { normalizeEducation();  persist(); timelineRenderers.education?.();  }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -171,9 +192,6 @@ style.textContent = `
 	.cv-dates .end-month,   .cv-dates .em-sep   { display: inline !important; }
 	.cv-dates .present-text { display: none !important; }
 
-	/* ghost entry — same structure as real entries, just faded */
-	.entry-ghost { opacity: .5; }
-
 	/* toolbar always uses dark theme colours */
 	#edit-toolbar {
 		position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
@@ -203,7 +221,7 @@ document.head.appendChild(style);
 
 // ── Text editing ──────────────────────────────────────────────────────────────
 
-function setupEditable(el, path, placeholder) {
+function setupEditable(el, path, placeholder, afterBlur = persist) {
 	el.contentEditable = 'true';
 	el.classList.add('cv-field');
 	el.setAttribute('data-placeholder', placeholder);
@@ -221,8 +239,7 @@ function setupEditable(el, path, placeholder) {
 		if (!value) el.innerHTML = '';
 		if (path.endsWith('.description')) value = value ? [value] : [];
 		setPath(state, path, value);
-		persist();
-		checkEntry(path);
+		afterBlur();
 	});
 	el.addEventListener('keydown', e => {
 		if (e.key === 'Escape') { el.textContent = el.dataset.before || ''; el.blur(); }
@@ -242,35 +259,42 @@ const FIELD_MAP = [
 	[() => document.querySelector('.additional-info section:first-child p'), 'description', 'Description'],
 ];
 
-for (const [getter, path, placeholder] of FIELD_MAP) {
-	const el = getter();
-	if (el) setupEditable(el, path, placeholder);
+function renderStatic() {
+	for (const [getter, path, placeholder] of FIELD_MAP) {
+		const el = getter();
+		if (!el) continue;
+		if (!el.classList.contains('cv-field')) {
+			setupEditable(el, path, placeholder);
+		} else {
+			const v = getPath(state, path);
+			el.innerHTML = '';
+			if (v != null && v !== '') el.textContent = Array.isArray(v) ? v.join(' ') : v;
+		}
+	}
 }
 
 // ── Ghost list (interests & badges) ──────────────────────────────────────────
 
-function makeGhostList(container, getItems, setItems, makeEl, placeholder = 'Add…') {
+// makeStringList — for atomic-string lists (interests, badges).
+// State must already be normalised (real strings + a trailing '' if no draft).
+function makeStringList(container, get, set, normalize, placeholder) {
 	function render() {
 		container.innerHTML = '';
-		[...getItems(), ''].forEach((item, i) => {
-			const isGhost = i === getItems().length;
-			const el = makeEl(item, isGhost);
+		const items = get();
+		items.forEach((item, i) => {
+			const el = document.createElement('span');
+			el.textContent = item;
 			el.contentEditable = 'true';
-			if (isGhost) {
-				el.classList.add('edit-ghost');
-				el.setAttribute('data-placeholder', placeholder);
-			}
+			el.setAttribute('data-placeholder', placeholder);
 
 			el.addEventListener('blur', () => {
 				const val = el.textContent.trim();
-				const items = getItems();
-				if (isGhost) {
-					if (val) { setItems([...items, val]); persist(); render(); }
-				} else {
-					const next = [...items];
-					if (val) { next[i] = val; setItems(next); persist(); }
-					else { next.splice(i, 1); setItems(next); persist(); render(); }
-				}
+				const next = [...get()];
+				next[i] = val;
+				set(next);
+				normalize();
+				persist();
+				render();
 			});
 			el.addEventListener('keydown', e => {
 				if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
@@ -283,25 +307,17 @@ function makeGhostList(container, getItems, setItems, makeEl, placeholder = 'Add
 	render();
 }
 
-// Interests
-const interestsEl = document.querySelector('.additional-info section:nth-child(2) p');
-if (interestsEl) {
-	interestsEl.removeAttribute('data-field');
-	interestsEl.classList.add('interests-list');
+function renderInterests() {
+	const interestsEl = document.querySelector('.additional-info section:nth-child(2) p');
+	if (!interestsEl) return;
 	interestsEl.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;';
-	makeGhostList(interestsEl,
-		() => state.interests || [],
+	makeStringList(interestsEl,
+		() => state.interests,
 		v => { state.interests = v; },
-		(item) => {
-			const span = document.createElement('span');
-			span.textContent = item;
-			return span;
-		},
+		normalizeInterests,
 		'Interest'
 	);
 }
-
-// Badges set up via materializeExpEntry — no discovery needed here
 
 // ── Connect / links ───────────────────────────────────────────────────────────
 
@@ -317,103 +333,83 @@ function setupConnectEdit() {
 
 	function renderLinks() {
 		section.querySelectorAll('.edit-link-row').forEach(el => el.remove());
-		const links = Object.entries(state.links || {});
-
-		function makeRow(platform, url, isGhost) {
-			const row = document.createElement('div');
-			row.className = 'edit-link-row';
-			row.style.cssText = 'display:flex;gap:6px;align-items:center;';
-
-			const pEl = document.createElement('span');
-			pEl.contentEditable = 'true';
-			pEl.textContent = platform;
-			pEl.style.cssText = 'min-width:60px;font-weight:bold;';
-			pEl.setAttribute('data-placeholder', 'Platform');
-			if (isGhost) pEl.classList.add('edit-ghost');
-
-			const sep = document.createElement('span');
-			sep.textContent = '·';
-			sep.style.opacity = '.4';
-
-			const uEl = document.createElement('span');
-			uEl.contentEditable = 'true';
-			uEl.textContent = url;
-			uEl.style.cssText = 'flex:1;';
-			uEl.setAttribute('data-placeholder', 'URL');
-			if (isGhost) uEl.classList.add('edit-ghost');
-
-			let saveTimer;
-			function scheduleSave() {
-				clearTimeout(saveTimer);
-				saveTimer = setTimeout(() => {
-					if (document.activeElement === pEl || document.activeElement === uEl) return;
-					const p = pEl.textContent.trim().toLowerCase();
-					const u = uEl.textContent.trim().replace(/^https?:\/\//, '');
-					const links = state.links || {};
-					if (!isGhost) delete links[platform];
-					if (p && u) { links[p] = u; state.links = links; persist(); renderLinks(); }
-					else if (!isGhost) { state.links = links; persist(); renderLinks(); }
-				}, 100);
-			}
-
-			pEl.addEventListener('blur', scheduleSave);
-			uEl.addEventListener('blur', scheduleSave);
-			[pEl, uEl].forEach(el => {
-				el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
-				el.addEventListener('focus', () => el.classList.remove('edit-ghost'));
-			});
-
-			row.appendChild(pEl);
-			row.appendChild(sep);
-			row.appendChild(uEl);
-
-			// Insert before the existing server-rendered anchor (for real entries)
-			// or append (for ghost)
-			return row;
-		}
-
-		// Replace server-rendered anchors with editable rows
 		section.querySelectorAll('a').forEach(a => a.style.display = 'none');
 
-		links.forEach(([platform, url]) => {
-			section.appendChild(makeRow(platform, url, false));
+		state.links.forEach((_, idx) => section.appendChild(makeRow(idx)));
+	}
+
+	function makeRow(idx) {
+		const link = state.links[idx];
+		const row = document.createElement('div');
+		row.className = 'edit-link-row';
+		row.style.cssText = 'display:flex;gap:6px;align-items:center;';
+
+		const pEl = document.createElement('span');
+		pEl.contentEditable = 'true';
+		pEl.textContent = link.platform;
+		pEl.style.cssText = 'min-width:60px;font-weight:bold;';
+		pEl.setAttribute('data-placeholder', 'Platform');
+
+		const sep = document.createElement('span');
+		sep.textContent = '·';
+		sep.style.opacity = '.4';
+
+		const uEl = document.createElement('span');
+		uEl.contentEditable = 'true';
+		uEl.textContent = link.url;
+		uEl.style.cssText = 'flex:1;';
+		uEl.setAttribute('data-placeholder', 'URL');
+
+		let saveTimer;
+		function scheduleSave() {
+			clearTimeout(saveTimer);
+			saveTimer = setTimeout(() => {
+				if (document.activeElement === pEl || document.activeElement === uEl) return;
+				if (!state.links[idx]) return;
+				state.links[idx].platform = pEl.textContent.trim();
+				state.links[idx].url      = uEl.textContent.trim();
+				normalizeLinks();
+				persist();
+				renderLinks();
+			}, 100);
+		}
+
+		pEl.addEventListener('blur', scheduleSave);
+		uEl.addEventListener('blur', scheduleSave);
+		[pEl, uEl].forEach(el => {
+			el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
 		});
-		section.appendChild(makeRow('', '', true));
+
+		row.append(pEl, sep, uEl);
+		return row;
 	}
 
 	renderLinks();
 }
 
-setupConnectEdit();
 
 // ── Materialize timeline entries ──────────────────────────────────────────────
 
-function mkSpan(cls, path, ph) {
+function mkSpan(cls, path, ph, afterBlur) {
 	const s = document.createElement('span');
 	s.className = cls;
-	setupEditable(s, path, ph);
+	setupEditable(s, path, ph, afterBlur);
 	return s;
 }
 
-function materializeExpEntry(idx, timelineEl) {
-	const job = state.experience[idx];
-	const left = document.createElement('div');
-
-	const company = document.createElement('strong');
-	setupEditable(company, `experience.${idx}.company`, 'Company');
-
-	const startPart = document.createElement('span');
-	startPart.className = 'start-part';
+function makeDateRange(prefix, sync) {
+	const startPart = document.createElement('span'); startPart.className = 'start-part';
 	const smSep = document.createElement('span'); smSep.className = 'sm-sep'; smSep.textContent = '/';
 	const rangeSep = document.createElement('span'); rangeSep.className = 'range-sep'; rangeSep.textContent = ' – ';
-	startPart.append(mkSpan('start-month', `experience.${idx}.start_month`, 'MM'), smSep,
-	                 mkSpan('start-year', `experience.${idx}.start_year`,  'YYYY'), rangeSep);
+	startPart.append(
+		mkSpan('start-month', `${prefix}.start_month`, 'MM',   sync), smSep,
+		mkSpan('start-year',  `${prefix}.start_year`,  'YYYY', sync), rangeSep);
 
-	const endPart = document.createElement('span');
-	endPart.className = 'end-part';
+	const endPart = document.createElement('span'); endPart.className = 'end-part';
 	const emSep = document.createElement('span'); emSep.className = 'em-sep'; emSep.textContent = '/';
-	endPart.append(mkSpan('end-month', `experience.${idx}.end_month`, 'MM'), emSep,
-	               mkSpan('end-year', `experience.${idx}.end_year`,  'YYYY'));
+	endPart.append(
+		mkSpan('end-month', `${prefix}.end_month`, 'MM',   sync), emSep,
+		mkSpan('end-year',  `${prefix}.end_year`,  'YYYY', sync));
 
 	const presentText = document.createElement('span');
 	presentText.className = 'present-text';
@@ -422,13 +418,24 @@ function materializeExpEntry(idx, timelineEl) {
 	const dates = document.createElement('div');
 	dates.className = 'cv-dates';
 	dates.append(startPart, endPart, presentText);
+	return dates;
+}
+
+function materializeExpEntry(idx, timelineEl) {
+	const left = document.createElement('div');
+
+	const company = document.createElement('strong');
+	setupEditable(company, `experience.${idx}.company`, 'Company', syncExperience);
+
+	const dates = makeDateRange(`experience.${idx}`, syncExperience);
 
 	const badgeList = document.createElement('div');
 	badgeList.className = 'badge-list';
-	makeGhostList(badgeList,
+	normalizeBadges(idx);
+	makeStringList(badgeList,
 		() => state.experience[idx]?.badges || [],
-		v => { if (state.experience[idx]) { state.experience[idx].badges = v; checkEntry(`experience.${idx}.badges`); } },
-		(item) => { const s = document.createElement('span'); s.textContent = item; return s; },
+		v => { if (state.experience[idx]) state.experience[idx].badges = v; },
+		() => normalizeBadges(idx),
 		'Badge'
 	);
 
@@ -436,54 +443,34 @@ function materializeExpEntry(idx, timelineEl) {
 
 	const right = document.createElement('div');
 	const title = document.createElement('strong');
-	setupEditable(title, `experience.${idx}.title`, 'Title');
+	setupEditable(title, `experience.${idx}.title`, 'Title', syncExperience);
 	const desc = document.createElement('p');
-	setupEditable(desc, `experience.${idx}.description`, 'Description');
+	setupEditable(desc, `experience.${idx}.description`, 'Description', syncExperience);
 
 	right.append(title, desc);
 	timelineEl.append(left, right);
 }
 
 function materializeEduEntry(idx, timelineEl) {
-	const edu = state.education[idx];
 	const left = document.createElement('div');
 
 	const institution = document.createElement('strong');
-	setupEditable(institution, `education.${idx}.institution`, 'Institution');
+	setupEditable(institution, `education.${idx}.institution`, 'Institution', syncEducation);
 
 	const eduSub = document.createElement('div');
 	const eduSubSpan = document.createElement('span');
-	setupEditable(eduSubSpan, `education.${idx}.subinstitution`, 'Faculty');
+	setupEditable(eduSubSpan, `education.${idx}.subinstitution`, 'Faculty', syncEducation);
 	eduSub.append(eduSubSpan);
 
-	const startPart = document.createElement('span');
-	startPart.className = 'start-part';
-	const smSep2 = document.createElement('span'); smSep2.className = 'sm-sep'; smSep2.textContent = '/';
-	const rangeSep = document.createElement('span'); rangeSep.className = 'range-sep'; rangeSep.textContent = ' – ';
-	startPart.append(mkSpan('start-month', `education.${idx}.start_month`, 'MM'), smSep2,
-	                 mkSpan('start-year',  `education.${idx}.start_year`,  'YYYY'), rangeSep);
-
-	const endPart = document.createElement('span');
-	endPart.className = 'end-part';
-	const emSep2 = document.createElement('span'); emSep2.className = 'em-sep'; emSep2.textContent = '/';
-	endPart.append(mkSpan('end-month', `education.${idx}.end_month`, 'MM'), emSep2,
-	               mkSpan('end-year',  `education.${idx}.end_year`,  'YYYY'));
-
-	const presentText = document.createElement('span');
-	presentText.className = 'present-text';
-	presentText.textContent = 'present';
-
-	const dates = document.createElement('div');
-	dates.className = 'cv-dates';
-	dates.append(startPart, endPart, presentText);
+	const dates = makeDateRange(`education.${idx}`, syncEducation);
 
 	left.append(institution, eduSub, dates);
 
 	const right = document.createElement('div');
 	const title = document.createElement('strong');
-	setupEditable(title, `education.${idx}.title`, 'Title');
+	setupEditable(title, `education.${idx}.title`, 'Title', syncEducation);
 	const desc = document.createElement('p');
-	setupEditable(desc, `education.${idx}.description`, 'Description');
+	setupEditable(desc, `education.${idx}.description`, 'Description', syncEducation);
 
 	right.append(title, desc);
 	timelineEl.append(left, right);
@@ -491,34 +478,20 @@ function materializeEduEntry(idx, timelineEl) {
 
 // ── Timeline renderers ────────────────────────────────────────────────────────
 
-function markGhost(timelineEl) {
-	const ch = [...timelineEl.children];
-	if (ch.length >= 2) {
-		ch[ch.length - 2].classList.add('entry-ghost');
-		ch[ch.length - 1].classList.add('entry-ghost');
-	}
-}
-
 const expTimeline = document.querySelector('.timeline');
 if (expTimeline) {
 	timelineRenderers.experience = function renderExp() {
 		expTimeline.innerHTML = '';
-		ensureGhost('experience');
 		state.experience.forEach((_, idx) => materializeExpEntry(idx, expTimeline));
-		markGhost(expTimeline);
 	};
-	timelineRenderers.experience();
 }
 
 const eduTimeline = document.querySelectorAll('.timeline')[1];
 if (eduTimeline) {
 	timelineRenderers.education = function renderEdu() {
 		eduTimeline.innerHTML = '';
-		ensureGhost('education');
 		state.education.forEach((_, idx) => materializeEduEntry(idx, eduTimeline));
-		markGhost(eduTimeline);
 	};
-	timelineRenderers.education();
 }
 
 // ── Colors ────────────────────────────────────────────────────────────────────
@@ -540,18 +513,12 @@ for (const k of themeKeys) {
 	if (savedColors[k]) root.style.setProperty(`--${k}`, savedColors[k]);
 }
 
-function applyColor(k, hex) {
-	themeColors[k] = hex;
-	root.style.setProperty(`--${k}`, hex);
-	persist();
-}
-
 // ── Toolbar ───────────────────────────────────────────────────────────────────
 
 const toolbar = document.createElement('div');
 toolbar.id = 'edit-toolbar';
 toolbar.innerHTML = `
-	<span style="flex:1;opacity:.5">✏️ Double-click text to edit</span>
+	<span style="flex:1;opacity:.5">✏️ Click any text to edit</span>
 	<button id="btn-reset">Reset</button>
 	<button id="btn-colors">🎨 Colors</button>
 	<button id="btn-preview">Preview</button>
@@ -573,7 +540,11 @@ for (const k of themeKeys) {
 	const input = document.createElement('input');
 	input.type = 'color';
 	input.value = themeColors[k] || '#000000';
-	input.addEventListener('input', () => applyColor(k, input.value));
+	input.addEventListener('input', () => {
+		themeColors[k] = input.value;
+		root.style.setProperty(`--${k}`, input.value);
+		persist();
+	});
 	row.appendChild(input);
 	colorPanel.appendChild(row);
 }
@@ -592,12 +563,30 @@ document.getElementById('btn-reset').addEventListener('click', () => {
 	location.reload();
 });
 
-// ── Preview ───────────────────────────────────────────────────────────────────
+// ── State → YAML / preview ─────────────────────────────────────────────────────
 
-document.getElementById('btn-preview').addEventListener('click', () => {
+function buildExport() {
 	const out = structuredClone(state);
-	if (out.experience?.length && !entryHasContent(out.experience.at(-1), 'experience')) out.experience.pop();
-	if (out.education?.length  && !entryHasContent(out.education.at(-1),  'education'))  out.education.pop();
+
+	// Drop the trailing empty placeholder slot from every list (drafts with content are kept)
+	const tail = arr => { while (arr?.length && isEntryEmpty(arr.at(-1))) arr.pop(); };
+	tail(out.experience);
+	tail(out.education);
+	if (Array.isArray(out.interests)) out.interests = out.interests.filter(s => s && String(s).trim());
+	if (Array.isArray(out.experience)) for (const job of out.experience) job.badges = (job.badges || []).filter(s => s && String(s).trim());
+
+	// Links: array → dict, keeping only fully-filled entries
+	if (Array.isArray(out.links)) {
+		const dict = {};
+		for (const { platform, url } of out.links) {
+			const p = (platform || '').trim();
+			const u = (url || '').trim();
+			if (p && u) dict[p] = u;
+		}
+		if (Object.keys(dict).length) out.links = dict;
+		else delete out.links;
+	}
+
 	const theme = {};
 	for (const [k, v] of Object.entries(themeColors)) {
 		if (k === 'dark' && v === '#283649') continue;
@@ -607,7 +596,34 @@ document.getElementById('btn-preview').addEventListener('click', () => {
 	if (Object.keys(theme).length) out.theme = theme;
 	else delete out.theme;
 	if (out.photo?.startsWith('data:')) out.photo = '';
+	return out;
+}
 
+// ── Render: rebuild the entire view from state ────────────────────────────────
+
+let yamlModal = null;
+
+function render() {
+	// Normalise every list — each enforces its own real/draft/empty invariants
+	normalizeInterests();
+	normalizeLinks();
+	normalizeExperience();
+	normalizeEducation();
+	for (const i of state.experience.keys()) normalizeBadges(i);
+
+	renderStatic();
+	renderInterests();
+	setupConnectEdit();
+	timelineRenderers.experience?.();
+	timelineRenderers.education?.();
+	if (yamlModal) yamlModal.querySelector('textarea').value = toYaml(buildExport());
+}
+
+render();
+
+// ── Preview ───────────────────────────────────────────────────────────────────
+
+document.getElementById('btn-preview').addEventListener('click', () => {
 	const form = document.createElement('form');
 	form.method = 'POST';
 	form.action = '/preview';
@@ -615,53 +631,60 @@ document.getElementById('btn-preview').addEventListener('click', () => {
 	const input = document.createElement('input');
 	input.type = 'hidden';
 	input.name = 'data';
-	input.value = JSON.stringify(out);
+	input.value = JSON.stringify(buildExport());
 	form.appendChild(input);
 	document.body.appendChild(form);
 	form.submit();
 	form.remove();
 });
 
-// ── Export ────────────────────────────────────────────────────────────────────
+// ── YAML editor ───────────────────────────────────────────────────────────────
 
 document.getElementById('btn-export').addEventListener('click', () => {
-	const out = structuredClone(state);
-	if (out.experience?.length && !entryHasContent(out.experience.at(-1), 'experience')) out.experience.pop();
-	if (out.education?.length  && !entryHasContent(out.education.at(-1),  'education'))  out.education.pop();
-	const theme = {};
-	for (const [k, v] of Object.entries(themeColors)) {
-		if (k === 'dark' && v === '#283649') continue;
-		if (k === 'light' && v === '#9c7843') continue;
-		theme[k] = v;
-	}
-	if (Object.keys(theme).length) out.theme = theme;
-	else delete out.theme;
-	if (out.photo?.startsWith('data:')) out.photo = '';
-
-	const yaml = toYaml(out);
-	const modal = document.createElement('div');
-	modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;';
-	modal.innerHTML = `
+	if (yamlModal) return;
+	const yaml = toYaml(buildExport());
+	yamlModal = document.createElement('div');
+	yamlModal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;';
+	yamlModal.innerHTML = `
 		<div style="background:var(--panel-dark);border:1px solid var(--light);border-radius:8px;padding:24px;width:min(700px,90vw);display:flex;flex-direction:column;gap:12px;">
 			<div style="display:flex;justify-content:space-between;align-items:center;color:var(--text-dark);font-family:var(--condensed-font);">
-				<strong>Export YAML</strong>
+				<strong>YAML</strong>
 				<div style="display:flex;gap:8px;">
-					<button id="modal-copy" style="padding:6px 14px;border-radius:6px;border:none;cursor:pointer;background:var(--button-dark);color:var(--button-text-dark);font-family:var(--condensed-font);">Copy</button>
+					<button id="modal-apply" style="padding:6px 14px;border-radius:6px;border:none;cursor:pointer;background:var(--button-dark);color:var(--button-text-dark);font-family:var(--condensed-font);">Apply</button>
+					<button id="modal-copy"  style="padding:6px 14px;border-radius:6px;border:none;cursor:pointer;background:var(--button-dark);color:var(--button-text-dark);font-family:var(--condensed-font);">Copy</button>
 					<button id="modal-close" style="padding:6px 14px;border-radius:6px;border:none;cursor:pointer;background:#444;color:white;font-family:var(--condensed-font);">✕</button>
 				</div>
 			</div>
-			<textarea readonly style="font-family:var(--mono-font);font-size:12px;background:#0a0a0e;color:#ccc;border:1px solid var(--border-dark);border-radius:4px;padding:12px;height:60vh;resize:none;width:100%;"></textarea>
+			<textarea spellcheck="false" style="font-family:var(--mono-font);font-size:12px;background:#0a0a0e;color:#ccc;border:1px solid var(--border-dark);border-radius:4px;padding:12px;height:60vh;resize:none;width:100%;"></textarea>
+			<div id="yaml-error" style="color:#e07070;font-family:var(--mono-font);font-size:12px;display:none;white-space:pre-wrap;"></div>
 		</div>`;
-	modal.querySelector('textarea').value = yaml;
-	document.body.appendChild(modal);
-	modal.querySelector('textarea').select();
-	modal.querySelector('#modal-copy').addEventListener('click', function () {
-		navigator.clipboard.writeText(modal.querySelector('textarea').value);
+	const textarea = yamlModal.querySelector('textarea');
+	const errEl    = yamlModal.querySelector('#yaml-error');
+	textarea.value = yaml;
+	document.body.appendChild(yamlModal);
+
+	yamlModal.querySelector('#modal-apply').addEventListener('click', () => {
+		try {
+			const parsed = jsyaml.load(textarea.value);
+			if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('YAML must be a mapping');
+			for (const k of Object.keys(state)) delete state[k];
+			Object.assign(state, parsed);
+			persist();
+			errEl.style.display = 'none';
+			render();
+		} catch (e) {
+			errEl.textContent = String(e.message || e);
+			errEl.style.display = 'block';
+		}
+	});
+	yamlModal.querySelector('#modal-copy').addEventListener('click', function () {
+		navigator.clipboard.writeText(textarea.value);
 		this.textContent = 'Copied!';
 		setTimeout(() => this.textContent = 'Copy', 2000);
 	});
-	modal.querySelector('#modal-close').addEventListener('click', () => modal.remove());
-	modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+	const close = () => { yamlModal.remove(); yamlModal = null; };
+	yamlModal.querySelector('#modal-close').addEventListener('click', close);
+	yamlModal.addEventListener('click', e => { if (e.target === yamlModal) close(); });
 });
 
 })();
