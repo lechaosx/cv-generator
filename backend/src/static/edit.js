@@ -33,7 +33,7 @@ function isEntryEmpty(entry) {
 //
 // Components plug in their own predicates + an "empty entry" factory.
 
-function normalizeList(arr, isReal, isEmpty, makeEmpty) {
+function normalizeList(arr, isReal, isEmpty, makeEmpty, ghostFirst = false) {
 	if (!Array.isArray(arr)) arr = [];
 	const result = [];
 	let hasDraft = false;
@@ -41,7 +41,7 @@ function normalizeList(arr, isReal, isEmpty, makeEmpty) {
 		if (isReal(item)) result.push(item);
 		else if (!isEmpty(item)) { result.push(item); hasDraft = true; }
 	}
-	if (!hasDraft) result.push(makeEmpty());
+	if (!hasDraft) (ghostFirst ? result.unshift : result.push).call(result, makeEmpty());
 	return result;
 }
 
@@ -74,7 +74,8 @@ function normalizeExperience() {
 	state.experience = normalizeList(state.experience,
 		e => !!(e.company?.trim() && e.title?.trim()),
 		isEntryEmpty,
-		() => ({ company: '', title: '', start_month: '', start_year: '', end_month: '', end_year: '', description: [], badges: [] })
+		() => ({ company: '', title: '', start_month: '', start_year: '', end_month: '', end_year: '', description: [], badges: [] }),
+		true
 	);
 }
 
@@ -82,7 +83,8 @@ function normalizeEducation() {
 	state.education = normalizeList(state.education,
 		e => !!(e.institution?.trim() && e.title?.trim()),
 		isEntryEmpty,
-		() => ({ institution: '', title: '', subinstitution: '', start_month: '', start_year: '', end_month: '', end_year: '', description: [] })
+		() => ({ institution: '', title: '', subinstitution: '', start_month: '', start_year: '', end_month: '', end_year: '', description: [] }),
+		true
 	);
 }
 
@@ -733,10 +735,10 @@ document.getElementById('btn-reset').addEventListener('click', () => {
 function buildExport() {
 	const out = structuredClone(state);
 
-	// Drop the trailing empty placeholder slot from every list (drafts with content are kept)
-	const tail = arr => { while (arr?.length && isEntryEmpty(arr.at(-1))) arr.pop(); };
-	tail(out.experience);
-	tail(out.education);
+	// Drop the empty placeholder slot from every list (drafts with content are kept)
+	const head = arr => { while (arr?.length && isEntryEmpty(arr[0])) arr.shift(); };
+	head(out.experience);
+	head(out.education);
 	if (Array.isArray(out.interests)) out.interests = out.interests.filter(s => s && String(s).trim());
 	if (Array.isArray(out.experience)) for (const job of out.experience) job.badges = (job.badges || []).filter(s => s && String(s).trim());
 
