@@ -216,6 +216,15 @@ style.textContent = `
 		width: 36px; height: 28px; padding: 0; border: 1px solid var(--border);
 		cursor: pointer; border-radius: 4px; background: none;
 	}
+
+	/* drag-and-drop reordering */
+	[draggable="true"].drag-item,
+	[draggable="true"].edit-link-row,
+	[draggable="true"].timeline-entry { cursor: grab; }
+	[draggable="true"].drag-item:active,
+	[draggable="true"].edit-link-row:active,
+	[draggable="true"].timeline-entry:active { cursor: grabbing; }
+	.dragging { opacity: .4; }
 `;
 document.head.appendChild(style);
 
@@ -223,6 +232,7 @@ document.head.appendChild(style);
 
 function setupEditable(el, path, placeholder, afterBlur = persist) {
 	el.contentEditable = 'true';
+	el.draggable = false;
 	el.classList.add('cv-field');
 	el.setAttribute('data-placeholder', placeholder);
 
@@ -244,6 +254,113 @@ function setupEditable(el, path, placeholder, afterBlur = persist) {
 	el.addEventListener('keydown', e => {
 		if (e.key === 'Escape') { el.textContent = el.dataset.before || ''; el.blur(); }
 		else if (e.key === 'Enter' && !e.shiftKey && !el.matches('p')) { e.preventDefault(); el.blur(); }
+	});
+}
+
+// ── Drag-and-drop reordering ──────────────────────────────────────────────────
+
+// Disable drag when mousedown lands on editable text — gives back native text selection.
+function dragOnlyOutsideText(el) {
+	el.addEventListener('mousedown', e => {
+		el.draggable = !e.target.closest('[contenteditable="true"]');
+	});
+	el.addEventListener('mouseup', () => { el.draggable = true; });
+}
+
+function enableDragSort(container, itemSelector, getList, setList, onChange, axis = 'v') {
+	// Drop-indicator approach: a thin line shows where the dragged item will
+	// land. State is updated only on drop (no DOM manipulation during dragover).
+	let dragKey = null;
+	let dropTarget = null; // { key, before }
+
+	function removeLine() { document.getElementById('drop-line')?.remove(); }
+
+	function showLine(targetEls, before) {
+		removeLine();
+		const first = targetEls[0].getBoundingClientRect();
+		const last  = targetEls[targetEls.length - 1].getBoundingClientRect();
+		const line = document.createElement('div');
+		line.id = 'drop-line';
+		line.style.cssText = 'position:absolute;background:var(--light);z-index:9999;pointer-events:none;border-radius:1px;';
+		if (axis === 'h') {
+			const x = before ? first.left : last.right;
+			line.style.left   = (x + scrollX - 1) + 'px';
+			line.style.top    = (first.top + scrollY) + 'px';
+			line.style.width  = '2px';
+			line.style.height = (first.bottom - first.top) + 'px';
+		} else {
+			const y = before ? first.top : last.bottom;
+			line.style.left   = (first.left + scrollX) + 'px';
+			line.style.top    = (y + scrollY - 1) + 'px';
+			line.style.width  = (last.right - first.left) + 'px';
+			line.style.height = '2px';
+		}
+		document.body.appendChild(line);
+	}
+
+	container.addEventListener('dragstart', e => {
+		const item = e.target.closest(itemSelector);
+		if (!item || item.dataset.dragIdx == null || !container.contains(item)) return;
+		e.stopPropagation();
+		dragKey = item.dataset.dragIdx;
+		container.querySelectorAll(`${itemSelector}[data-drag-idx="${CSS.escape(dragKey)}"]`)
+			.forEach(el => el.classList.add('dragging'));
+		e.dataTransfer.effectAllowed = 'move';
+		e.dataTransfer.setData('text/plain', '');
+	});
+
+	container.addEventListener('dragover', e => {
+		if (dragKey == null) return;
+		e.preventDefault();
+		e.stopPropagation();
+		e.dataTransfer.dropEffect = 'move';
+
+		const target = e.target.closest(itemSelector);
+		if (!target || target.dataset.dragIdx == null || !container.contains(target) || target.dataset.dragIdx === dragKey) {
+			removeLine();
+			dropTarget = null;
+			return;
+		}
+
+		const rect = target.getBoundingClientRect();
+		const before = axis === 'h'
+			? e.clientX < rect.left + rect.width / 2
+			: e.clientY < rect.top + rect.height / 2;
+
+		const targetEls = [...container.querySelectorAll(`${itemSelector}[data-drag-idx="${CSS.escape(target.dataset.dragIdx)}"]`)];
+		if (!targetEls.length) return;
+		showLine(targetEls, before);
+		dropTarget = { key: target.dataset.dragIdx, before };
+	});
+
+	container.addEventListener('dragleave', e => {
+		if (!container.contains(e.relatedTarget)) { removeLine(); dropTarget = null; }
+	});
+
+	container.addEventListener('drop', e => {
+		if (dragKey == null) return;
+		e.preventDefault();
+		e.stopPropagation();
+		if (dropTarget && dropTarget.key !== dragKey) {
+			const fromIdx = +dragKey;
+			const toIdx   = +dropTarget.key;
+			let insertAt = toIdx + (dropTarget.before ? 0 : 1);
+			if (fromIdx < insertAt) insertAt--;
+			const list = [...getList()];
+			const [moved] = list.splice(fromIdx, 1);
+			list.splice(insertAt, 0, moved);
+			setList(list);
+		}
+	});
+
+	container.addEventListener('dragend', e => {
+		if (dragKey == null) return;
+		e.stopPropagation();
+		container.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+		removeLine();
+		dragKey = null;
+		dropTarget = null;
+		onChange();
 	});
 }
 
@@ -282,9 +399,20 @@ function makeStringList(container, get, set, normalize, placeholder) {
 		container.innerHTML = '';
 		const items = get();
 		items.forEach((item, i) => {
+			const wrap = document.createElement('span');
+			wrap.className = 'drag-item';
+			wrap.style.cssText = 'display:inline-flex;align-items:baseline;gap:2px;';
+
+			if (item && String(item).trim()) {
+				wrap.dataset.dragIdx = i;
+				wrap.draggable = true;
+				dragOnlyOutsideText(wrap);
+			}
+
 			const el = document.createElement('span');
 			el.textContent = item;
 			el.contentEditable = 'true';
+			el.draggable = false;
 			el.setAttribute('data-placeholder', placeholder);
 
 			el.addEventListener('blur', () => {
@@ -301,8 +429,14 @@ function makeStringList(container, get, set, normalize, placeholder) {
 				if (e.key === 'Escape') { el.textContent = item; el.blur(); }
 			});
 
-			container.appendChild(el);
+			wrap.appendChild(el);
+			container.appendChild(wrap);
 		});
+	}
+
+	if (!container.dataset.dragInited) {
+		container.dataset.dragInited = '1';
+		enableDragSort(container, '.drag-item', get, set, () => { normalize(); persist(); render(); }, 'h');
 	}
 	render();
 }
@@ -310,7 +444,7 @@ function makeStringList(container, get, set, normalize, placeholder) {
 function renderInterests() {
 	const interestsEl = document.querySelector('.additional-info section:nth-child(2) p');
 	if (!interestsEl) return;
-	interestsEl.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;';
+	interestsEl.classList.add('badge-list');
 	makeStringList(interestsEl,
 		() => state.interests,
 		v => { state.interests = v; },
@@ -340,12 +474,21 @@ function setupConnectEdit() {
 
 	function makeRow(idx) {
 		const link = state.links[idx];
+		const isEmpty = !((link.platform || '').trim() || (link.url || '').trim());
+
 		const row = document.createElement('div');
 		row.className = 'edit-link-row';
 		row.style.cssText = 'display:flex;gap:6px;align-items:center;';
 
+		if (!isEmpty) {
+			row.dataset.dragIdx = idx;
+			row.draggable = true;
+			dragOnlyOutsideText(row);
+		}
+
 		const pEl = document.createElement('span');
 		pEl.contentEditable = 'true';
+		pEl.draggable = false;
 		pEl.textContent = link.platform;
 		pEl.style.cssText = 'min-width:60px;font-weight:bold;';
 		pEl.setAttribute('data-placeholder', 'Platform');
@@ -356,6 +499,7 @@ function setupConnectEdit() {
 
 		const uEl = document.createElement('span');
 		uEl.contentEditable = 'true';
+		uEl.draggable = false;
 		uEl.textContent = link.url;
 		uEl.style.cssText = 'flex:1;';
 		uEl.setAttribute('data-placeholder', 'URL');
@@ -382,6 +526,15 @@ function setupConnectEdit() {
 
 		row.append(pEl, sep, uEl);
 		return row;
+	}
+
+	if (!section.dataset.dragInited) {
+		section.dataset.dragInited = '1';
+		enableDragSort(section, '.edit-link-row', () => state.links, v => { state.links = v; }, () => {
+			normalizeLinks();
+			persist();
+			renderLinks();
+		});
 	}
 
 	renderLinks();
@@ -422,7 +575,10 @@ function makeDateRange(prefix, sync) {
 }
 
 function materializeExpEntry(idx, timelineEl) {
+	const isReal = !isEntryEmpty(state.experience[idx]);
 	const left = document.createElement('div');
+	left.classList.add('timeline-entry');
+	if (isReal) { left.draggable = true; left.dataset.dragIdx = idx; dragOnlyOutsideText(left); }
 
 	const company = document.createElement('strong');
 	setupEditable(company, `experience.${idx}.company`, 'Company', syncExperience);
@@ -442,6 +598,8 @@ function materializeExpEntry(idx, timelineEl) {
 	left.append(company, dates, badgeList);
 
 	const right = document.createElement('div');
+	right.classList.add('timeline-entry');
+	if (isReal) { right.draggable = true; right.dataset.dragIdx = idx; dragOnlyOutsideText(right); }
 	const title = document.createElement('strong');
 	setupEditable(title, `experience.${idx}.title`, 'Title', syncExperience);
 	const desc = document.createElement('p');
@@ -452,7 +610,10 @@ function materializeExpEntry(idx, timelineEl) {
 }
 
 function materializeEduEntry(idx, timelineEl) {
+	const isReal = !isEntryEmpty(state.education[idx]);
 	const left = document.createElement('div');
+	left.classList.add('timeline-entry');
+	if (isReal) { left.draggable = true; left.dataset.dragIdx = idx; dragOnlyOutsideText(left); }
 
 	const institution = document.createElement('strong');
 	setupEditable(institution, `education.${idx}.institution`, 'Institution', syncEducation);
@@ -467,6 +628,8 @@ function materializeEduEntry(idx, timelineEl) {
 	left.append(institution, eduSub, dates);
 
 	const right = document.createElement('div');
+	right.classList.add('timeline-entry');
+	if (isReal) { right.draggable = true; right.dataset.dragIdx = idx; dragOnlyOutsideText(right); }
 	const title = document.createElement('strong');
 	setupEditable(title, `education.${idx}.title`, 'Title', syncEducation);
 	const desc = document.createElement('p');
@@ -484,6 +647,7 @@ if (expTimeline) {
 		expTimeline.innerHTML = '';
 		state.experience.forEach((_, idx) => materializeExpEntry(idx, expTimeline));
 	};
+	enableDragSort(expTimeline, '.timeline-entry', () => state.experience, v => { state.experience = v; }, syncExperience);
 }
 
 const eduTimeline = document.querySelectorAll('.timeline')[1];
@@ -492,6 +656,7 @@ if (eduTimeline) {
 		eduTimeline.innerHTML = '';
 		state.education.forEach((_, idx) => materializeEduEntry(idx, eduTimeline));
 	};
+	enableDragSort(eduTimeline, '.timeline-entry', () => state.education, v => { state.education = v; }, syncEducation);
 }
 
 // ── Colors ────────────────────────────────────────────────────────────────────
