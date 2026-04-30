@@ -100,8 +100,14 @@ function normalizeEducation() {
 	);
 }
 
-function syncExperience() { normalizeExperience(); persist(); timelineRenderers.experience?.(); }
-function syncEducation()  { normalizeEducation();  persist(); timelineRenderers.education?.();  }
+function syncExperience(e) {
+	normalizeExperience(); persist();
+	if (!expTimeline?.contains(e?.relatedTarget)) timelineRenderers.experience?.();
+}
+function syncEducation(e) {
+	normalizeEducation(); persist();
+	if (!eduTimeline?.contains(e?.relatedTarget)) timelineRenderers.education?.();
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -185,8 +191,9 @@ function toYaml(obj, indent = 0) {
 const style = document.createElement('style');
 style.textContent = `
 	.cv-field { cursor: text; }
+	.cv-field[contenteditable="false"] { user-select: none; }
 	.cv-field:hover { outline: 1px dashed var(--border); border-radius: 2px; }
-	[contenteditable]:focus { outline: 2px solid var(--border) !important; border-radius: 2px; }
+	[contenteditable="true"]:focus { outline: 2px solid var(--border) !important; border-radius: 2px; }
 
 	/* ghost items: whole element faded */
 	.edit-ghost { opacity: .5; }
@@ -288,26 +295,45 @@ document.head.appendChild(style);
 
 // ── Text editing ──────────────────────────────────────────────────────────────
 
+function activateOnInteract(el) {
+	function enterEdit() {
+		el.contentEditable = 'true';
+		el.focus();
+	}
+	el.addEventListener('dblclick', e => { e.stopPropagation(); e.preventDefault(); enterEdit(); });
+	let pressTimer;
+	el.addEventListener('touchstart', e => {
+		pressTimer = setTimeout(() => { e.preventDefault(); enterEdit(); }, 500);
+	}, { passive: false });
+	el.addEventListener('touchmove',  () => clearTimeout(pressTimer));
+	el.addEventListener('touchend',   () => clearTimeout(pressTimer));
+}
+
 function setupEditable(el, path, placeholder, afterBlur = persist) {
-	el.contentEditable = 'true';
+	const v = getPath(state, path);
+	const hasValue = v != null && (Array.isArray(v) ? v.some(x => String(x).trim()) : String(v).trim() !== '');
+	const immediate = !hasValue;
+
+	el.contentEditable = immediate ? 'true' : 'false';
 	el.draggable = false;
 	el.classList.add('cv-field');
 	el.setAttribute('data-placeholder', placeholder);
 
-	// Apply state (state is always initialised — from localStorage or CV_DATA)
-	const v = getPath(state, path);
 	if (v != null) {
 		if (Array.isArray(v)) el.textContent = v.join(' ');
 		else { el.innerHTML = ''; el.textContent = v; }
 	}
 
+	if (!immediate) activateOnInteract(el);
+
 	el.addEventListener('focus', () => { el.dataset.before = el.textContent; });
-	el.addEventListener('blur', () => {
+	el.addEventListener('blur', e => {
+		if (!immediate) el.contentEditable = 'false';
 		let value = el.textContent.trim();
 		if (!value) el.innerHTML = '';
 		if (path.endsWith('.description')) value = value ? [value] : [];
 		setPath(state, path, value);
-		afterBlur();
+		afterBlur(e);
 	});
 	el.addEventListener('keydown', e => {
 		if (e.key === 'Escape') { el.textContent = el.dataset.before || ''; el.blur(); }
@@ -457,30 +483,42 @@ function makeStringList(container, get, set, normalize, placeholder) {
 		container.innerHTML = '';
 		const items = get();
 		items.forEach((item, i) => {
+			const isNonEmpty = !!(item && String(item).trim());
 			const wrap = document.createElement('span');
 			wrap.className = 'drag-item';
 			wrap.style.cssText = 'display:inline-flex;align-items:baseline;gap:2px;';
 
-			if (item && String(item).trim()) {
+			if (isNonEmpty) {
 				wrap.dataset.dragIdx = i;
 				wrap.draggable = true;
-				dragOnlyOutsideText(wrap);
 			}
 
 			const el = document.createElement('span');
 			el.textContent = item;
-			el.contentEditable = 'true';
+			el.contentEditable = isNonEmpty ? 'false' : 'true';
 			el.draggable = false;
 			el.setAttribute('data-placeholder', placeholder);
 
-			el.addEventListener('blur', () => {
+			if (isNonEmpty) {
+				const enterEdit = () => { wrap.draggable = false; el.contentEditable = 'true'; el.focus(); };
+				el.addEventListener('dblclick', e => { e.stopPropagation(); e.preventDefault(); enterEdit(); });
+				let pressTimer;
+				el.addEventListener('touchstart', e => {
+					pressTimer = setTimeout(() => { e.preventDefault(); enterEdit(); }, 500);
+				}, { passive: false });
+				el.addEventListener('touchmove',  () => clearTimeout(pressTimer));
+				el.addEventListener('touchend',   () => clearTimeout(pressTimer));
+			}
+
+			el.addEventListener('blur', e => {
+				if (isNonEmpty) { el.contentEditable = 'false'; wrap.draggable = true; }
 				const val = el.textContent.trim();
 				const next = [...get()];
 				next[i] = val;
 				set(next);
 				normalize();
 				persist();
-				render();
+				if (!container.contains(e.relatedTarget)) render();
 			});
 			el.addEventListener('keydown', e => {
 				if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
@@ -544,23 +582,28 @@ function setupConnectEdit() {
 			dragOnlyOutsideText(row);
 		}
 
+		const pEmpty = !(link.platform || '').trim();
+		const uEmpty = !(link.url || '').trim();
+
 		const pEl = document.createElement('span');
-		pEl.contentEditable = 'true';
+		pEl.contentEditable = pEmpty ? 'true' : 'false';
 		pEl.draggable = false;
 		pEl.textContent = link.platform;
 		pEl.style.cssText = 'min-width:60px;font-weight:bold;';
 		pEl.setAttribute('data-placeholder', 'Platform');
+		if (!pEmpty) activateOnInteract(pEl);
 
 		const sep = document.createElement('span');
 		sep.textContent = '·';
 		sep.style.opacity = '.4';
 
 		const uEl = document.createElement('span');
-		uEl.contentEditable = 'true';
+		uEl.contentEditable = uEmpty ? 'true' : 'false';
 		uEl.draggable = false;
 		uEl.textContent = link.url;
 		uEl.style.cssText = 'flex:1;';
 		uEl.setAttribute('data-placeholder', 'URL');
+		if (!uEmpty) activateOnInteract(uEl);
 
 		let saveTimer;
 		function scheduleSave() {
@@ -576,8 +619,8 @@ function setupConnectEdit() {
 			}, 100);
 		}
 
-		pEl.addEventListener('blur', scheduleSave);
-		uEl.addEventListener('blur', scheduleSave);
+		pEl.addEventListener('blur', () => { if (!pEmpty) pEl.contentEditable = 'false'; scheduleSave(); });
+		uEl.addEventListener('blur', () => { if (!uEmpty) uEl.contentEditable = 'false'; scheduleSave(); });
 		[pEl, uEl].forEach(el => {
 			el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
 		});
@@ -633,7 +676,8 @@ function makeDateRange(prefix, sync) {
 }
 
 function materializeExpEntry(idx, timelineEl) {
-	const isReal = !isEntryEmpty(state.experience[idx]);
+	const entry = state.experience[idx];
+	const isReal = !!(entry?.company?.trim() && entry?.title?.trim());
 	const left = document.createElement('div');
 	left.classList.add('timeline-entry');
 	if (isReal) { left.draggable = true; left.dataset.dragIdx = idx; dragOnlyOutsideText(left); }
@@ -668,7 +712,8 @@ function materializeExpEntry(idx, timelineEl) {
 }
 
 function materializeEduEntry(idx, timelineEl) {
-	const isReal = !isEntryEmpty(state.education[idx]);
+	const entry = state.education[idx];
+	const isReal = !!(entry?.institution?.trim() && entry?.title?.trim());
 	const left = document.createElement('div');
 	left.classList.add('timeline-entry');
 	if (isReal) { left.draggable = true; left.dataset.dragIdx = idx; dragOnlyOutsideText(left); }
@@ -791,7 +836,7 @@ toolbar.innerHTML = `
 	<button id="btn-reset">Reset</button>
 	<button id="btn-colors">🎨 Colors</button>
 	<button id="btn-preview">Preview</button>
-	<button id="btn-export">📋 Export YAML</button>
+	<button id="btn-export">📋 YAML</button>
 `;
 document.body.appendChild(toolbar);
 document.body.style.paddingBottom = toolbar.offsetHeight + 'px';
