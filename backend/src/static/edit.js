@@ -3,6 +3,7 @@
 const STORAGE_KEY = `cv-edit:${location.host}`;
 const COLORS_KEY  = `cv-edit-colors:${location.host}`;
 const LINKS_KEY   = `cv-edit-links:${location.host}`;
+const UNDO_KEY    = `cv-edit-undo:${location.host}`;
 
 const saved = localStorage.getItem(STORAGE_KEY);
 const state = saved ? JSON.parse(saved) : structuredClone(window.CV_DATA);
@@ -11,10 +12,9 @@ let colorLinks  = {};
 const colorInputs = {};
 const timelineRenderers = {};
 
-function persist() {
+function persistRaw() {
 	localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 	localStorage.setItem(COLORS_KEY, JSON.stringify(themeColors));
-	// Only persist overrides relative to DEFAULT_LINKS
 	const linkDelta = {};
 	for (const [k, v] of Object.entries(colorLinks)) {
 		if (DEFAULT_LINKS[k] !== v) linkDelta[k] = v;
@@ -23,6 +23,90 @@ function persist() {
 		if (!colorLinks[k]) linkDelta[k] = '';
 	}
 	localStorage.setItem(LINKS_KEY, JSON.stringify(linkDelta));
+	lastSaved = captureSnapshot();
+}
+
+function persist() {
+	trackUndo();
+	persistRaw();
+}
+
+// ── Undo / Redo ───────────────────────────────────────────────────────────────
+
+let undoStack = [];
+let redoStack = [];
+let lastSaved  = null;
+
+function captureSnapshot() {
+	return {
+		state:       JSON.parse(JSON.stringify(state)),
+		themeColors: JSON.parse(JSON.stringify(themeColors)),
+		colorLinks:  JSON.parse(JSON.stringify(colorLinks)),
+	};
+}
+
+function saveUndoHistory() {
+	try { localStorage.setItem(UNDO_KEY, JSON.stringify({ u: undoStack, r: redoStack, ts: Date.now() })); } catch(e) {}
+}
+
+function loadUndoHistory() {
+	try {
+		const raw = localStorage.getItem(UNDO_KEY);
+		if (!raw) return;
+		const saved = JSON.parse(raw);
+		if (Date.now() - saved.ts > 7 * 24 * 60 * 60 * 1000) return;
+		undoStack = saved.u || [];
+		redoStack = saved.r || [];
+	} catch(e) {}
+}
+
+function updateUndoButtons() {
+	const u = document.getElementById('btn-undo');
+	const r = document.getElementById('btn-redo');
+	if (u) u.disabled = !undoStack.length;
+	if (r) r.disabled = !redoStack.length;
+}
+
+function trackUndo() {
+	if (!lastSaved) return;
+	const top = undoStack[undoStack.length - 1];
+	if (top && JSON.stringify(top) === JSON.stringify(lastSaved)) return;
+	undoStack.push(lastSaved);
+	if (undoStack.length > 100) undoStack.shift();
+	redoStack = [];
+	saveUndoHistory();
+	updateUndoButtons();
+}
+
+function restoreSnapshot(snap) {
+	for (const k of Object.keys(state)) delete state[k];
+	Object.assign(state, JSON.parse(JSON.stringify(snap.state)));
+	for (const k of Object.keys(themeColors)) delete themeColors[k];
+	Object.assign(themeColors, JSON.parse(JSON.stringify(snap.themeColors)));
+	for (const k of Object.keys(colorLinks)) delete colorLinks[k];
+	Object.assign(colorLinks, JSON.parse(JSON.stringify(snap.colorLinks)));
+	for (const k of themeKeys) {
+		const link = colorLinks[k];
+		root.style.setProperty(`--${k}`, link ? (themeColors[link] || '#000000') : (themeColors[k] || ''));
+	}
+	buildColorPanelContent();
+	persistRaw();
+	render();
+	updateUndoButtons();
+}
+
+function performUndo() {
+	if (!undoStack.length) return;
+	redoStack.push(captureSnapshot());
+	restoreSnapshot(undoStack.pop());
+	saveUndoHistory();
+}
+
+function performRedo() {
+	if (!redoStack.length) return;
+	undoStack.push(captureSnapshot());
+	restoreSnapshot(redoStack.pop());
+	saveUndoHistory();
 }
 
 // Generic content check — works for any entry shape.
@@ -226,6 +310,7 @@ style.textContent = `
 		font-family: var(--condensed-font); font-size: 14px;
 	}
 	#edit-toolbar button:hover { opacity: .8; }
+	#edit-toolbar button:disabled { opacity: .3; cursor: default; pointer-events: none; }
 	#btn-reset { background: #5a2a2a !important; color: white !important; }
 	#edit-color-panel {
 		position: fixed; bottom: 52px; right: 20px; z-index: 9998;
@@ -833,6 +918,8 @@ const toolbar = document.createElement('div');
 toolbar.id = 'edit-toolbar';
 toolbar.innerHTML = `
 	<span style="flex:1;opacity:.5">✏️ Click any text to edit</span>
+	<button id="btn-undo" title="Undo (Ctrl+Z)">↩</button>
+	<button id="btn-redo" title="Redo (Ctrl+Y)">↪</button>
 	<button id="btn-reset">Reset</button>
 	<button id="btn-colors">🎨 Colors</button>
 	<button id="btn-preview">Preview</button>
@@ -951,92 +1038,114 @@ function makeVariantControls(k) {
 	return wrap;
 }
 
-// Base palette row (5 swatches)
-const baseRow = document.createElement('div');
-baseRow.className = 'color-base-row';
-for (const k of BASE_COLORS) {
-	const swatch = document.createElement('div');
-	swatch.className = 'color-swatch';
-	const yamlVal = state.theme?.[k];
-	const defaultVal = yamlVal ? resolveColor(yamlVal) : DEFAULT_BASE_VALUES[k];
-	const input = makeColorInput(k, true);
-	const resetBtn = document.createElement('button');
-	resetBtn.className = 'color-reset-btn';
-	resetBtn.title = 'Reset to default';
-	resetBtn.textContent = '↺';
-	const checkReset = () => { resetBtn.style.display = themeColors[k] === defaultVal ? 'none' : ''; };
-	checkReset();
-	input.addEventListener('input', checkReset);
-	resetBtn.addEventListener('click', () => {
-		themeColors[k] = defaultVal;
-		root.style.setProperty(`--${k}`, defaultVal);
-		input.value = defaultVal;
-		for (const [ck, base] of Object.entries(colorLinks)) {
-			if (base === k) applyLinkedColor(ck);
-		}
-		persist();
+function buildColorPanelContent() {
+	while (colorPanel.children.length > 1) colorPanel.lastChild.remove();
+	for (const k of Object.keys(colorInputs)) delete colorInputs[k];
+
+	const baseRow = document.createElement('div');
+	baseRow.className = 'color-base-row';
+	for (const k of BASE_COLORS) {
+		const swatch = document.createElement('div');
+		swatch.className = 'color-swatch';
+		const yamlVal = state.theme?.[k];
+		const defaultVal = yamlVal ? resolveColor(yamlVal) : DEFAULT_BASE_VALUES[k];
+		const input = makeColorInput(k, true);
+		const resetBtn = document.createElement('button');
+		resetBtn.className = 'color-reset-btn';
+		resetBtn.title = 'Reset to default';
+		resetBtn.textContent = '↺';
+		const checkReset = () => { resetBtn.style.display = themeColors[k] === defaultVal ? 'none' : ''; };
 		checkReset();
-	});
-	const lbl = document.createElement('label');
-	lbl.textContent = BASE_LABELS[k] || k;
-	const lblRow = document.createElement('div');
-	lblRow.style.cssText = 'display:flex;align-items:center;gap:3px;';
-	lblRow.appendChild(lbl);
-	lblRow.appendChild(resetBtn);
-	swatch.appendChild(input);
-	swatch.appendChild(lblRow);
-	baseRow.appendChild(swatch);
+		input.addEventListener('input', checkReset);
+		resetBtn.addEventListener('click', () => {
+			themeColors[k] = defaultVal;
+			root.style.setProperty(`--${k}`, defaultVal);
+			input.value = defaultVal;
+			for (const [ck, base] of Object.entries(colorLinks)) {
+				if (base === k) applyLinkedColor(ck);
+			}
+			persist();
+			checkReset();
+		});
+		const lbl = document.createElement('label');
+		lbl.textContent = BASE_LABELS[k] || k;
+		const lblRow = document.createElement('div');
+		lblRow.style.cssText = 'display:flex;align-items:center;gap:3px;';
+		lblRow.appendChild(lbl);
+		lblRow.appendChild(resetBtn);
+		swatch.appendChild(input);
+		swatch.appendChild(lblRow);
+		baseRow.appendChild(swatch);
+	}
+	colorPanel.appendChild(baseRow);
+
+	const variants = document.createElement('div');
+	variants.className = 'color-variants';
+	variants.appendChild(document.createElement('div'));
+	const darkHdr = document.createElement('div');
+	darkHdr.className = 'color-col-title';
+	darkHdr.textContent = 'Dark';
+	variants.appendChild(darkHdr);
+	const lightHdr = document.createElement('div');
+	lightHdr.className = 'color-col-title';
+	lightHdr.textContent = 'Light';
+	variants.appendChild(lightHdr);
+
+	const panelLabel = document.createElement('div');
+	panelLabel.textContent = 'Surface';
+	panelLabel.style.cssText = 'font-size:13px;';
+	variants.appendChild(panelLabel);
+	variants.appendChild(makeVariantControls('panel-dark'));
+	variants.appendChild(makeVariantControls('panel-light'));
+
+	for (let i = 0; i < DARK_COLORS.length; i++) {
+		const label = document.createElement('div');
+		label.textContent = VARIANT_LABELS[DARK_COLORS[i]];
+		label.style.cssText = 'font-size:13px;';
+		variants.appendChild(label);
+		variants.appendChild(makeVariantControls(DARK_COLORS[i]));
+		variants.appendChild(makeVariantControls(LIGHT_COLORS[i]));
+	}
+	colorPanel.appendChild(variants);
 }
-colorPanel.appendChild(baseRow);
 
-// Table-style variant grid: label | dark controls | light controls
-const variants = document.createElement('div');
-variants.className = 'color-variants';
-
-// Header row
-variants.appendChild(document.createElement('div'));
-const darkHdr = document.createElement('div');
-darkHdr.className = 'color-col-title';
-darkHdr.textContent = 'Dark';
-variants.appendChild(darkHdr);
-const lightHdr = document.createElement('div');
-lightHdr.className = 'color-col-title';
-lightHdr.textContent = 'Light';
-variants.appendChild(lightHdr);
-
-// Panel background row
-const panelLabel = document.createElement('div');
-panelLabel.textContent = 'Surface';
-panelLabel.style.cssText = 'font-size:13px;';
-variants.appendChild(panelLabel);
-variants.appendChild(makeVariantControls('panel-dark'));
-variants.appendChild(makeVariantControls('panel-light'));
-
-for (let i = 0; i < DARK_COLORS.length; i++) {
-	const label = document.createElement('div');
-	label.textContent = VARIANT_LABELS[DARK_COLORS[i]];
-	label.style.cssText = 'font-size:13px;';
-	variants.appendChild(label);
-	variants.appendChild(makeVariantControls(DARK_COLORS[i]));
-	variants.appendChild(makeVariantControls(LIGHT_COLORS[i]));
-}
-
-colorPanel.appendChild(variants);
-
+buildColorPanelContent();
 document.body.appendChild(colorPanel);
 
 document.getElementById('btn-colors').addEventListener('click', () => {
 	colorPanel.style.display = colorPanel.style.display === 'flex' ? 'none' : 'flex';
 });
 
+document.getElementById('btn-undo').addEventListener('click', performUndo);
+document.getElementById('btn-redo').addEventListener('click', performRedo);
+
+document.addEventListener('keydown', e => {
+	if (document.activeElement?.getAttribute('contenteditable') === 'true') return;
+	if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); performUndo(); }
+	if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); performRedo(); }
+});
+
 // ── Reset ─────────────────────────────────────────────────────────────────────
 
+function buildResetSnapshot() {
+	const resetState = structuredClone(window.CV_DATA);
+	const resetColorLinks = { ...DEFAULT_LINKS };
+	const resetThemeColors = {};
+	for (const k of BASE_COLORS) {
+		const yamlVal = resetState.theme?.[k];
+		resetThemeColors[k] = (yamlVal && String(yamlVal).startsWith('#')) ? yamlVal : DEFAULT_BASE_VALUES[k];
+	}
+	for (const k of [...PANEL_COLORS, ...DARK_COLORS, ...LIGHT_COLORS]) {
+		const link = DEFAULT_LINKS[k];
+		resetThemeColors[k] = link ? resetThemeColors[link] : '#000000';
+	}
+	return { state: resetState, themeColors: resetThemeColors, colorLinks: resetColorLinks };
+}
+
 document.getElementById('btn-reset').addEventListener('click', () => {
-	if (!confirm('Reset all changes?')) return;
-	localStorage.removeItem(STORAGE_KEY);
-	localStorage.removeItem(COLORS_KEY);
-	localStorage.removeItem(LINKS_KEY);
-	location.reload();
+	trackUndo();
+	restoreSnapshot(buildResetSnapshot());
+	saveUndoHistory();
 });
 
 // ── State → YAML / preview ─────────────────────────────────────────────────────
@@ -1102,6 +1211,9 @@ function render() {
 }
 
 render();
+lastSaved = captureSnapshot();
+loadUndoHistory();
+updateUndoButtons();
 
 // ── Preview ───────────────────────────────────────────────────────────────────
 
