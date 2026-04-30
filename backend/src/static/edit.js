@@ -2,15 +2,27 @@
 
 const STORAGE_KEY = `cv-edit:${location.host}`;
 const COLORS_KEY  = `cv-edit-colors:${location.host}`;
+const LINKS_KEY   = `cv-edit-links:${location.host}`;
 
 const saved = localStorage.getItem(STORAGE_KEY);
 const state = saved ? JSON.parse(saved) : structuredClone(window.CV_DATA);
 let themeColors = {};
+let colorLinks  = {};
+const colorInputs = {};
 const timelineRenderers = {};
 
 function persist() {
 	localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 	localStorage.setItem(COLORS_KEY, JSON.stringify(themeColors));
+	// Only persist overrides relative to DEFAULT_LINKS
+	const linkDelta = {};
+	for (const [k, v] of Object.entries(colorLinks)) {
+		if (DEFAULT_LINKS[k] !== v) linkDelta[k] = v;
+	}
+	for (const k of Object.keys(DEFAULT_LINKS)) {
+		if (!colorLinks[k]) linkDelta[k] = '';
+	}
+	localStorage.setItem(LINKS_KEY, JSON.stringify(linkDelta));
 }
 
 // Generic content check — works for any entry shape.
@@ -211,12 +223,56 @@ style.textContent = `
 	#edit-color-panel {
 		position: fixed; bottom: 52px; right: 20px; z-index: 9998;
 		background: var(--panel-dark); border: 1px solid var(--light); border-radius: 8px;
-		padding: 16px; display: none; flex-direction: column; gap: 10px;
-		font-family: var(--condensed-font); font-size: 13px; color: var(--text-dark); min-width: 220px;
+		padding: 16px; display: none; flex-direction: column; gap: 12px;
+		font-family: var(--condensed-font); font-size: 13px; color: var(--text-dark);
 	}
 	#edit-color-panel input[type=color] {
-		width: 36px; height: 28px; padding: 0; border: 1px solid var(--border);
+		padding: 0; border: 1px solid var(--border);
 		cursor: pointer; border-radius: 4px; background: none;
+	}
+	.color-base-row {
+		display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+	}
+	.color-swatch {
+		display: flex; flex-direction: column; align-items: center; gap: 4px;
+	}
+	.color-swatch input[type=color] {
+		width: 44px; height: 36px; border-radius: 6px;
+	}
+	.color-swatch label {
+		font-size: 11px; text-align: center; opacity: .75; white-space: nowrap;
+	}
+	.color-variants {
+		display: grid; grid-template-columns: 1fr auto auto;
+		row-gap: 5px; column-gap: 10px; align-items: center;
+		border-top: 1px solid rgba(255,255,255,.15); padding-top: 10px;
+	}
+	.color-col-title {
+		font-weight: bold; opacity: .8; font-size: 12px; text-transform: uppercase;
+		letter-spacing: .05em; text-align: center;
+	}
+	.color-variant-controls {
+		display: flex; align-items: center; gap: 4px;
+	}
+	.color-variant-controls input[type=color] {
+		width: 32px; height: 24px; border-radius: 4px; flex-shrink: 0;
+	}
+	.color-reset-btn {
+		flex-shrink: 0; background: none; border: none; color: inherit;
+		cursor: pointer; opacity: .35; font-size: 13px; padding: 0; line-height: 1;
+	}
+	.color-reset-btn:hover { opacity: 1; }
+	.color-link-dots {
+		display: flex; gap: 6px; align-items: center; flex-shrink: 0;
+	}
+	.color-link-dot {
+		width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0;
+		border: 2px solid transparent; cursor: pointer; padding: 0;
+		outline: 1px solid rgba(255,255,255,.25);
+		outline-offset: 0;
+	}
+	.color-link-dot.active {
+		outline: 2px solid rgba(255,255,255,.85); outline-offset: 1px;
 	}
 
 	/* drag-and-drop reordering */
@@ -666,18 +722,64 @@ if (eduTimeline) {
 const root = document.documentElement;
 const computed = getComputedStyle(root);
 
-const THEME_LABELS = {
-	dark: 'Dark panel', light: 'Accent color',
-	'panel-dark': 'Dark panel bg', 'panel-light': 'Light panel bg',
-	'badge-dark': 'Badge (dark)', 'badge-text-dark': 'Badge text (dark)',
-	'badge-light': 'Badge (light)', 'badge-text-light': 'Badge text (light)',
+const BASE_COLORS   = ['background', 'dark', 'light', 'white', 'black'];
+const PANEL_COLORS  = ['panel-dark', 'panel-light'];
+const DARK_COLORS   = ['text-dark', 'link-dark', 'name-dark', 'position-dark', 'header-dark', 'header-border-dark', 'border-dark', 'icon-dark', 'timeline-dark', 'badge-dark', 'badge-text-dark', 'button-dark', 'button-text-dark'];
+const LIGHT_COLORS  = ['text-light', 'link-light', 'name-light', 'position-light', 'header-light', 'header-border-light', 'border-light', 'icon-light', 'timeline-light', 'badge-light', 'badge-text-light', 'button-light', 'button-text-light'];
+const BASE_LABELS   = { background: 'Background', dark: 'Dark', light: 'Accent', white: 'White', black: 'Black' };
+const DEFAULT_BASE_VALUES = { background: '#2a2a2e', dark: '#283649', light: '#9c7843', white: '#ffffff', black: '#000000' };
+const VARIANT_LABELS = {
+	'text-dark': 'Text',          'text-light': 'Text',
+	'link-dark': 'Link',          'link-light': 'Link',
+	'name-dark': 'Name',          'name-light': 'Name',
+	'position-dark': 'Position',  'position-light': 'Position',
+	'header-dark': 'Header',      'header-light': 'Header',
+	'header-border-dark': 'Header border', 'header-border-light': 'Header border',
+	'border-dark': 'Border',      'border-light': 'Border',
+	'icon-dark': 'Icon',          'icon-light': 'Icon',
+	'timeline-dark': 'Timeline',  'timeline-light': 'Timeline',
+	'badge-dark': 'Badge',        'badge-light': 'Badge',
+	'badge-text-dark': 'Badge text', 'badge-text-light': 'Badge text',
+	'button-dark': 'Button',      'button-light': 'Button',
+	'button-text-dark': 'Button text', 'button-text-light': 'Button text',
 };
 
-const themeKeys = ['dark', 'light', ...Object.keys(state.theme || {}).filter(k => k !== 'dark' && k !== 'light')];
+const LINK_BASES  = ['dark', 'light', 'white', 'black'];
+const LINK_LABELS = { dark: 'Dark', light: 'Accent', white: 'White', black: 'Black' };
+const DEFAULT_LINKS = {
+	'panel-dark': 'dark',          'panel-light': 'white',
+	'text-dark': 'white',          'text-light': 'black',
+	'link-dark': 'white',          'link-light': 'black',
+	'name-dark': 'white',          'name-light': 'dark',
+	'position-dark': 'light',      'position-light': 'light',
+	'header-dark': 'light',        'header-light': 'black',
+	'header-border-dark': 'white', 'header-border-light': 'black',
+	'border-dark': 'light',        'border-light': 'light',
+	'icon-dark': 'light',          'icon-light': 'light',
+	'timeline-dark': 'light',      'timeline-light': 'light',
+	'badge-dark': 'light',         'badge-light': 'light',
+	'badge-text-dark': 'white',    'badge-text-light': 'white',
+	'button-dark': 'light',        'button-light': 'light',
+	'button-text-dark': 'black',   'button-text-light': 'black',
+};
+
+const themeKeys = [...new Set([...BASE_COLORS, ...PANEL_COLORS, ...DARK_COLORS, ...LIGHT_COLORS,
+	...Object.keys(state.theme || {}).filter(k => !BASE_COLORS.includes(k) && !PANEL_COLORS.includes(k) && !DARK_COLORS.includes(k) && !LIGHT_COLORS.includes(k))])];
 const savedColors = JSON.parse(localStorage.getItem(COLORS_KEY) || '{}');
+// Always start from DEFAULT_LINKS, apply only user overrides on top
+colorLinks = { ...DEFAULT_LINKS };
+const savedLinkDelta = JSON.parse(localStorage.getItem(LINKS_KEY) || '{}');
+for (const [k, v] of Object.entries(savedLinkDelta)) {
+	if (v) colorLinks[k] = v;
+	else delete colorLinks[k];
+}
 for (const k of themeKeys) {
 	themeColors[k] = savedColors[k] || resolveColor(state.theme?.[k] || computed.getPropertyValue(`--${k}`).trim());
-	if (savedColors[k]) root.style.setProperty(`--${k}`, savedColors[k]);
+	if (savedColors[k] && !colorLinks[k]) root.style.setProperty(`--${k}`, savedColors[k]);
+}
+// Apply linked component colors after base colors are initialized
+for (const [ck, base] of Object.entries(colorLinks)) {
+	if (!BASE_COLORS.includes(ck)) root.style.setProperty(`--${ck}`, themeColors[base] || '#000000');
 }
 
 // ── Toolbar ───────────────────────────────────────────────────────────────────
@@ -700,21 +802,182 @@ const colorPanel = document.createElement('div');
 colorPanel.id = 'edit-color-panel';
 colorPanel.innerHTML = '<strong>Theme Colors</strong>';
 
-for (const k of themeKeys) {
-	const row = document.createElement('div');
-	row.style.cssText = 'display:flex;align-items:center;gap:8px;';
-	row.innerHTML = `<span style="flex:1">${THEME_LABELS[k] || k}</span>`;
+function getLinkedHex(k) {
+	const base = colorLinks[k];
+	return base ? (themeColors[base] || '#000000') : (themeColors[k] || '#000000');
+}
+
+function applyLinkedColor(ck) {
+	const hex = getLinkedHex(ck);
+	root.style.setProperty(`--${ck}`, hex);
+	if (colorInputs[ck]) colorInputs[ck].value = hex;
+}
+
+function makeColorInput(k, isBase = false) {
 	const input = document.createElement('input');
 	input.type = 'color';
-	input.value = themeColors[k] || '#000000';
+	input.value = getLinkedHex(k);
+	colorInputs[k] = input;
 	input.addEventListener('input', () => {
 		themeColors[k] = input.value;
 		root.style.setProperty(`--${k}`, input.value);
+		if (isBase) {
+			for (const [ck, base] of Object.entries(colorLinks)) {
+				if (base === k) applyLinkedColor(ck);
+			}
+		}
 		persist();
 	});
-	row.appendChild(input);
-	colorPanel.appendChild(row);
+	return input;
 }
+
+function makeVariantControls(k) {
+	const wrap = document.createElement('div');
+	wrap.className = 'color-variant-controls';
+
+	const dotsWrap = document.createElement('div');
+	dotsWrap.className = 'color-link-dots';
+	const dots = {};
+	for (const base of LINK_BASES) {
+		const dot = document.createElement('button');
+		dot.className = 'color-link-dot';
+		dot.title = LINK_LABELS[base];
+		dot.style.background = `var(--${base})`;
+		if (colorLinks[k] === base) dot.classList.add('active');
+		dot.addEventListener('click', () => {
+			if (colorLinks[k] === base) {
+				delete colorLinks[k];
+				dot.classList.remove('active');
+				input.classList.remove('is-linked');
+				themeColors[k] = input.value;
+				root.style.setProperty(`--${k}`, input.value);
+			} else {
+				if (colorLinks[k]) dots[colorLinks[k]]?.classList.remove('active');
+				colorLinks[k] = base;
+				dot.classList.add('active');
+				input.classList.add('is-linked');
+				applyLinkedColor(k);
+			}
+			persist();
+			checkReset();
+		});
+		dots[base] = dot;
+		dotsWrap.appendChild(dot);
+	}
+
+	const input = makeColorInput(k, false);
+	if (colorLinks[k]) input.classList.add('is-linked');
+
+	input.addEventListener('input', () => {
+		if (!colorLinks[k]) return;
+		dots[colorLinks[k]]?.classList.remove('active');
+		delete colorLinks[k];
+		input.classList.remove('is-linked');
+		checkReset();
+	});
+
+	const resetBtn = document.createElement('button');
+	resetBtn.className = 'color-reset-btn';
+	resetBtn.title = 'Reset to default';
+	resetBtn.textContent = '↺';
+	const checkReset = () => {
+		resetBtn.style.opacity = colorLinks[k] === DEFAULT_LINKS[k] ? '0' : '';
+	};
+	checkReset();
+	resetBtn.addEventListener('click', () => {
+		if (colorLinks[k]) dots[colorLinks[k]]?.classList.remove('active');
+		const defaultLink = DEFAULT_LINKS[k];
+		if (defaultLink) {
+			colorLinks[k] = defaultLink;
+			dots[defaultLink]?.classList.add('active');
+			input.classList.add('is-linked');
+		} else {
+			delete colorLinks[k];
+			input.classList.remove('is-linked');
+		}
+		applyLinkedColor(k);
+		persist();
+		checkReset();
+	});
+
+	wrap.appendChild(dotsWrap);
+	wrap.appendChild(input);
+	wrap.appendChild(resetBtn);
+	return wrap;
+}
+
+// Base palette row (5 swatches)
+const baseRow = document.createElement('div');
+baseRow.className = 'color-base-row';
+for (const k of BASE_COLORS) {
+	const swatch = document.createElement('div');
+	swatch.className = 'color-swatch';
+	const yamlVal = state.theme?.[k];
+	const defaultVal = yamlVal ? resolveColor(yamlVal) : DEFAULT_BASE_VALUES[k];
+	const input = makeColorInput(k, true);
+	const resetBtn = document.createElement('button');
+	resetBtn.className = 'color-reset-btn';
+	resetBtn.title = 'Reset to default';
+	resetBtn.textContent = '↺';
+	const checkReset = () => { resetBtn.style.display = themeColors[k] === defaultVal ? 'none' : ''; };
+	checkReset();
+	input.addEventListener('input', checkReset);
+	resetBtn.addEventListener('click', () => {
+		themeColors[k] = defaultVal;
+		root.style.setProperty(`--${k}`, defaultVal);
+		input.value = defaultVal;
+		for (const [ck, base] of Object.entries(colorLinks)) {
+			if (base === k) applyLinkedColor(ck);
+		}
+		persist();
+		checkReset();
+	});
+	const lbl = document.createElement('label');
+	lbl.textContent = BASE_LABELS[k] || k;
+	const lblRow = document.createElement('div');
+	lblRow.style.cssText = 'display:flex;align-items:center;gap:3px;';
+	lblRow.appendChild(lbl);
+	lblRow.appendChild(resetBtn);
+	swatch.appendChild(input);
+	swatch.appendChild(lblRow);
+	baseRow.appendChild(swatch);
+}
+colorPanel.appendChild(baseRow);
+
+// Table-style variant grid: label | dark controls | light controls
+const variants = document.createElement('div');
+variants.className = 'color-variants';
+
+// Header row
+variants.appendChild(document.createElement('div'));
+const darkHdr = document.createElement('div');
+darkHdr.className = 'color-col-title';
+darkHdr.textContent = 'Dark';
+variants.appendChild(darkHdr);
+const lightHdr = document.createElement('div');
+lightHdr.className = 'color-col-title';
+lightHdr.textContent = 'Light';
+variants.appendChild(lightHdr);
+
+// Panel background row
+const panelLabel = document.createElement('div');
+panelLabel.textContent = 'Surface';
+panelLabel.style.cssText = 'font-size:13px;';
+variants.appendChild(panelLabel);
+variants.appendChild(makeVariantControls('panel-dark'));
+variants.appendChild(makeVariantControls('panel-light'));
+
+for (let i = 0; i < DARK_COLORS.length; i++) {
+	const label = document.createElement('div');
+	label.textContent = VARIANT_LABELS[DARK_COLORS[i]];
+	label.style.cssText = 'font-size:13px;';
+	variants.appendChild(label);
+	variants.appendChild(makeVariantControls(DARK_COLORS[i]));
+	variants.appendChild(makeVariantControls(LIGHT_COLORS[i]));
+}
+
+colorPanel.appendChild(variants);
+
 document.body.appendChild(colorPanel);
 
 document.getElementById('btn-colors').addEventListener('click', () => {
@@ -727,6 +990,7 @@ document.getElementById('btn-reset').addEventListener('click', () => {
 	if (!confirm('Reset all changes?')) return;
 	localStorage.removeItem(STORAGE_KEY);
 	localStorage.removeItem(COLORS_KEY);
+	localStorage.removeItem(LINKS_KEY);
 	location.reload();
 });
 
@@ -755,10 +1019,16 @@ function buildExport() {
 	}
 
 	const theme = {};
-	for (const [k, v] of Object.entries(themeColors)) {
-		if (k === 'dark' && v === '#283649') continue;
-		if (k === 'light' && v === '#9c7843') continue;
-		theme[k] = v;
+	for (const k of themeKeys) {
+		const v = themeColors[k];
+		if (BASE_COLORS.includes(k) && v === DEFAULT_BASE_VALUES[k]) continue;
+		const link = colorLinks[k];
+		if (link) {
+			if (DEFAULT_LINKS[k] === link) continue;
+			theme[k] = `--${link}`;
+		} else {
+			theme[k] = v;
+		}
 	}
 	if (Object.keys(theme).length) out.theme = theme;
 	else delete out.theme;
