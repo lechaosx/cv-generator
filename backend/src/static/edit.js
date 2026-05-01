@@ -623,9 +623,16 @@ function makeStringList(container, get, set, normalize, placeholder) {
 }
 
 function renderInterests() {
-	const interestsEl = document.querySelector('.additional-info section:nth-child(2) p');
-	if (!interestsEl) return;
-	interestsEl.classList.add('badge-list');
+	const section = document.querySelector('.additional-info section:nth-child(2)');
+	if (!section) return;
+	let interestsEl = section.querySelector('.badge-list');
+	if (!interestsEl) {
+		const p = section.querySelector('p');
+		if (!p) return;
+		interestsEl = document.createElement('div');
+		interestsEl.className = 'badge-list';
+		p.replaceWith(interestsEl);
+	}
 	makeStringList(interestsEl,
 		() => state.interests,
 		v => { state.interests = v; },

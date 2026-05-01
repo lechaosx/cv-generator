@@ -53,7 +53,15 @@
 			</section>
 			<section>
 				<h2 class="section-header">Interests</h2>
-				<p>{{ data.interests | default([]) | join(' · ') or '<span class="placeholder">Interests will appear here.</span>' | safe }}</p>
+				{% if data.interests %}
+				<div class="badge-list">
+					{% for interest in data.interests %}
+					<span>{{ interest }}</span>
+					{% endfor %}
+				</div>
+				{% else %}
+				<p><span class="placeholder">Interests will appear here.</span></p>
+				{% endif %}
 			</section>
 			{% if data.links %}
 			<section class="connect">
