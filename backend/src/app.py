@@ -15,6 +15,8 @@ import yaml
 app = flask.Flask(__name__)
 app.jinja_env.trim_blocks = True
 app.jinja_env.lstrip_blocks = True
+app.config['MAX_CONTENT_LENGTH']    = 50 * 1024 * 1024
+app.config['MAX_FORM_MEMORY_SIZE']  = 50 * 1024 * 1024
 
 ICONIFY_URL = "https://api.iconify.design/{name}.svg?color=currentColor"
 

@@ -4,6 +4,70 @@ const STORAGE_KEY = `cv-edit:${location.host}`;
 const COLORS_KEY  = `cv-edit-colors:${location.host}`;
 const LINKS_KEY   = `cv-edit-links:${location.host}`;
 const UNDO_KEY    = `cv-edit-undo:${location.host}`;
+const PHOTO_DB    = 'cv-edit';
+const PHOTO_STORE = 'photo';
+const PHOTO_REF_PREFIX = 'idb:';
+
+function openPhotoDB() {
+	return new Promise((resolve, reject) => {
+		const req = indexedDB.open(PHOTO_DB, 1);
+		req.onupgradeneeded = () => req.result.createObjectStore(PHOTO_STORE);
+		req.onsuccess = () => resolve(req.result);
+		req.onerror   = () => reject(req.error);
+	});
+}
+
+async function idbGet(key) {
+	try {
+		const db = await openPhotoDB();
+		return await new Promise(resolve => {
+			const req = db.transaction(PHOTO_STORE, 'readonly').objectStore(PHOTO_STORE).get(key);
+			req.onsuccess = () => resolve(req.result);
+			req.onerror   = () => resolve(null);
+		});
+	} catch { return null; }
+}
+
+async function idbPut(key, value) {
+	try {
+		const db = await openPhotoDB();
+		db.transaction(PHOTO_STORE, 'readwrite').objectStore(PHOTO_STORE).put(value, key);
+	} catch (e) { console.warn('IndexedDB photo write failed:', e); }
+}
+
+const photoCache = new Map();
+
+async function hashString(s) {
+	const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+	return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 24);
+}
+
+async function storePhotoData(dataUrl, name) {
+	const hash = await hashString(dataUrl);
+	const record = { data: dataUrl, name: name || `image-${hash.slice(0, 8)}` };
+	if (!photoCache.has(hash)) {
+		photoCache.set(hash, record);
+		await idbPut(hash, record);
+	}
+	return PHOTO_REF_PREFIX + hash;
+}
+
+async function resolvePhotoRef(ref) {
+	if (!ref) return null;
+	if (!ref.startsWith(PHOTO_REF_PREFIX)) return { data: ref };
+	const hash = ref.slice(PHOTO_REF_PREFIX.length);
+	if (photoCache.has(hash)) return photoCache.get(hash);
+	let record = await idbGet(hash);
+	if (typeof record === 'string') record = { data: record, name: `image-${hash.slice(0, 8)}` };
+	if (record) photoCache.set(hash, record);
+	return record;
+}
+
+async function ensureRef(value, name) {
+	if (!value) return '';
+	if (value.startsWith('data:')) return await storePhotoData(value, name);
+	return value;
+}
 
 const saved = localStorage.getItem(STORAGE_KEY);
 const state = saved ? JSON.parse(saved) : structuredClone(window.CV_DATA);
@@ -296,6 +360,14 @@ style.textContent = `
 	.cv-field[contenteditable="false"] { user-select: none; }
 	.cv-field:hover { outline: 1px dashed var(--border); border-radius: 2px; }
 	[contenteditable="true"]:focus { outline: 2px solid var(--border) !important; border-radius: 2px; }
+
+	body.drag-active:not(.photo-modal-open) .photo.drop-target img,
+	body.drag-active:not(.photo-modal-open) .photo.drop-target svg,
+	body.drag-active input.drop-target { box-shadow: 0 0 0 2px var(--border); transition: box-shadow .15s; }
+	body:not(.photo-modal-open) .photo.drop-target.dropping img,
+	body:not(.photo-modal-open) .photo.drop-target.dropping svg,
+	input.drop-target.dropping { box-shadow: 0 0 0 4px var(--light) !important; }
+
 
 	/* ghost items: whole element faded */
 	.edit-ghost { opacity: .5; }
@@ -703,6 +775,144 @@ function renderInterests() {
 		normalizeInterests,
 		'interest'
 	);
+}
+
+// ── Photo ─────────────────────────────────────────────────────────────────────
+
+const PHOTO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+	<circle cx="50" cy="50" r="50" fill="var(--white)"/>
+	<circle cx="50" cy="38" r="18" fill="var(--light)"/>
+	<ellipse cx="50" cy="90" rx="30" ry="22" fill="var(--light)"/>
+</svg>`;
+
+function attachImageDrop(el, onResult) {
+	el.classList.add('drop-target');
+	el.ondragenter = e => {
+		e.preventDefault(); e.stopPropagation();
+		el.classList.add('dropping');
+	};
+	el.ondragover = e => { e.preventDefault(); e.stopPropagation(); };
+	el.ondragleave = e => {
+		if (!el.contains(e.relatedTarget)) el.classList.remove('dropping');
+	};
+	el.ondrop = e => {
+		e.preventDefault(); e.stopPropagation();
+		el.classList.remove('dropping');
+		const file = e.dataTransfer?.files?.[0];
+		if (file) {
+			const reader = new FileReader();
+			reader.onload = () => onResult(reader.result, file.name);
+			reader.readAsDataURL(file);
+			return;
+		}
+		const fromUriList = (e.dataTransfer?.getData('text/uri-list') || '')
+			.split(/\r?\n/).find(l => l && !l.startsWith('#'));
+		const url = (fromUriList || e.dataTransfer?.getData('text/plain') || '').trim();
+		if (url) onResult(url);
+	};
+}
+
+let dragActiveTimer;
+document.addEventListener('dragover', () => {
+	document.body.classList.add('drag-active');
+	clearTimeout(dragActiveTimer);
+	dragActiveTimer = setTimeout(() => document.body.classList.remove('drag-active'), 100);
+}, true);
+document.addEventListener('drop', () => {
+	clearTimeout(dragActiveTimer);
+	document.body.classList.remove('drag-active');
+});
+
+async function commitPhoto(value, name) {
+	state.photo = await ensureRef(value, name);
+	renderPhoto();
+	setTimeout(persist, 0);
+}
+
+async function renderPhoto() {
+	const photoDiv = document.querySelector('.photo');
+	if (!photoDiv) return;
+	photoDiv.style.cursor = 'pointer';
+	photoDiv.title = 'Click to edit photo, or drop an image';
+	photoDiv.onclick = openPhotoEdit;
+	attachImageDrop(photoDiv, commitPhoto);
+	const ref = state.photo;
+	if (!ref) { photoDiv.innerHTML = PHOTO_SVG; return; }
+	const record = await resolvePhotoRef(ref);
+	if (state.photo !== ref) return; // stale render
+	if (!record?.data) { photoDiv.innerHTML = PHOTO_SVG; return; }
+	const img = document.createElement('img');
+	img.alt = '';
+	img.width = 400;
+	img.onerror = () => { photoDiv.innerHTML = PHOTO_SVG; };
+	img.src = record.data;
+	photoDiv.innerHTML = '';
+	photoDiv.appendChild(img);
+}
+
+function openPhotoEdit() {
+	const modal = document.createElement('div');
+	modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;';
+	modal.innerHTML = `
+		<div style="background:var(--panel-dark);border:1px solid var(--light);border-radius:8px;padding:24px;width:min(500px,90vw);display:flex;flex-direction:column;gap:12px;color:var(--text-dark);font-family:var(--condensed-font);">
+			<strong>Photo URL</strong>
+			<input type="url" id="photo-url" placeholder="https://..." style="padding:6px;border-radius:4px;border:1px solid var(--border-dark);background:#0a0a0e;color:#ccc;font-family:var(--mono-font);font-size:12px;">
+			<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+				<button id="photo-reset" title="Reset to default" style="background:none;border:none;color:inherit;cursor:pointer;opacity:.5;font-size:18px;padding:0;line-height:1;">↺</button>
+				<div style="display:flex;gap:8px;">
+					<button id="photo-cancel" style="padding:6px 14px;border-radius:6px;border:none;cursor:pointer;background:#444;color:white;font-family:var(--condensed-font);">Cancel</button>
+					<button id="photo-apply" style="padding:6px 14px;border-radius:6px;border:none;cursor:pointer;background:var(--button-dark);color:var(--button-text-dark);font-family:var(--condensed-font);">Apply</button>
+				</div>
+			</div>
+		</div>`;
+	document.body.appendChild(modal);
+	document.body.classList.add('photo-modal-open');
+
+	const urlEl = modal.querySelector('#photo-url');
+	let pendingRef = state.photo || '';
+	let typedMode = false;
+
+	const refToDisplay = ref => {
+		if (!ref) return '';
+		if (!ref.startsWith(PHOTO_REF_PREFIX)) return ref;
+		const hash = ref.slice(PHOTO_REF_PREFIX.length);
+		return photoCache.get(hash)?.name || hash;
+	};
+
+	resolvePhotoRef(pendingRef).then(() => { urlEl.value = refToDisplay(pendingRef); });
+	urlEl.value = refToDisplay(pendingRef);
+	urlEl.focus();
+
+	urlEl.addEventListener('input', () => { typedMode = true; });
+	attachImageDrop(urlEl, async (value, name) => {
+		typedMode = false;
+		if (value.startsWith('data:')) {
+			pendingRef = await storePhotoData(value, name);
+		} else {
+			pendingRef = value;
+		}
+		urlEl.value = refToDisplay(pendingRef);
+	});
+
+	const close = () => {
+		document.body.classList.remove('photo-modal-open');
+		modal.remove();
+	};
+	const apply = () => {
+		close();
+		if (typedMode) commitPhoto(urlEl.value.trim());
+		else if (pendingRef !== state.photo) commitPhoto(pendingRef);
+	};
+	urlEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); apply(); } });
+	modal.querySelector('#photo-apply').addEventListener('click', apply);
+	modal.querySelector('#photo-reset').addEventListener('click', () => {
+		pendingRef = window.CV_DATA?.photo || '';
+		typedMode = false;
+		resolvePhotoRef(pendingRef).then(() => { urlEl.value = refToDisplay(pendingRef); });
+		urlEl.value = refToDisplay(pendingRef);
+	});
+	modal.querySelector('#photo-cancel').addEventListener('click', close);
+	modal.addEventListener('click', e => { if (e.target === modal) close(); });
 }
 
 // ── Connect / links ───────────────────────────────────────────────────────────
@@ -1236,7 +1446,7 @@ document.getElementById('btn-reset').addEventListener('click', () => {
 
 // ── State → YAML / preview ─────────────────────────────────────────────────────
 
-const TOP_ORDER = ['title_before_name', 'name', 'title_after_name', 'position', 'phone', 'email', 'location', 'photo', 'description', 'interests', 'links', 'theme', 'experience', 'education', 'language'];
+const TOP_ORDER = ['title_before_name', 'name', 'title_after_name', 'position', 'phone', 'email', 'location', 'description', 'interests', 'links', 'theme', 'experience', 'education', 'language', 'photo'];
 const EXP_ORDER = ['title', 'company', 'start_month', 'start_year', 'end_month', 'end_year', 'description', 'badges'];
 const EDU_ORDER = ['title', 'institution', 'subinstitution', 'start_month', 'start_year', 'end_month', 'end_year', 'description'];
 
@@ -1259,8 +1469,12 @@ function stripEmpty(obj) {
 	return out;
 }
 
-function buildExport() {
+async function buildExport() {
 	const out = structuredClone(state);
+	if (out.photo?.startsWith(PHOTO_REF_PREFIX)) {
+		const r = await resolvePhotoRef(out.photo);
+		out.photo = r?.data || '';
+	}
 
 	// Drop the empty placeholder slot from every list (drafts with content are kept)
 	const head = arr => { while (arr?.length && isEntryEmpty(arr[0])) arr.shift(); };
@@ -1295,7 +1509,6 @@ function buildExport() {
 	}
 	if (Object.keys(theme).length) out.theme = theme;
 	else delete out.theme;
-	if (out.photo?.startsWith('data:')) out.photo = '';
 	if (Array.isArray(out.experience)) out.experience = out.experience.map(e => stripEmpty(reorderKeys(e, EXP_ORDER)));
 	if (Array.isArray(out.education))  out.education  = out.education.map(e => stripEmpty(reorderKeys(e, EDU_ORDER)));
 	return stripEmpty(reorderKeys(out, TOP_ORDER));
@@ -1315,12 +1528,13 @@ function render() {
 	for (const i of state.experience.keys()) normalizeBadges(i);
 
 	renderStatic();
+	renderPhoto();
 	renderInterests();
 	setupConnectEdit();
 	timelineRenderers.experience?.();
 	timelineRenderers.education?.();
 	updateLabels();
-	if (yamlModal) yamlModal.querySelector('textarea').value = toYaml(buildExport());
+	if (yamlModal) buildExport().then(o => { yamlModal.querySelector('textarea').value = toYaml(o); });
 }
 
 render();
@@ -1328,9 +1542,18 @@ lastSaved = captureSnapshot();
 loadUndoHistory();
 updateUndoButtons();
 
+if (state.photo?.startsWith('data:')) {
+	storePhotoData(state.photo).then(ref => {
+		state.photo = ref;
+		renderPhoto();
+		setTimeout(persist, 0);
+	});
+}
+
 // ── Preview ───────────────────────────────────────────────────────────────────
 
-document.getElementById('btn-preview').addEventListener('click', () => {
+document.getElementById('btn-preview').addEventListener('click', async () => {
+	const out = await buildExport();
 	const form = document.createElement('form');
 	form.method = 'POST';
 	form.action = '/preview';
@@ -1338,7 +1561,7 @@ document.getElementById('btn-preview').addEventListener('click', () => {
 	const input = document.createElement('input');
 	input.type = 'hidden';
 	input.name = 'data';
-	input.value = JSON.stringify(buildExport());
+	input.value = JSON.stringify(out);
 	form.appendChild(input);
 	document.body.appendChild(form);
 	form.submit();
@@ -1347,16 +1570,17 @@ document.getElementById('btn-preview').addEventListener('click', () => {
 
 // ── YAML editor ───────────────────────────────────────────────────────────────
 
-document.getElementById('btn-export').addEventListener('click', () => {
+document.getElementById('btn-export').addEventListener('click', async () => {
 	if (yamlModal) return;
-	const yaml = toYaml(buildExport());
+	const yaml = toYaml(await buildExport());
 	yamlModal = document.createElement('div');
 	yamlModal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;';
 	yamlModal.innerHTML = `
 		<div style="background:var(--panel-dark);border:1px solid var(--light);border-radius:8px;padding:24px;width:min(700px,90vw);display:flex;flex-direction:column;gap:12px;">
 			<div style="display:flex;justify-content:space-between;align-items:center;color:var(--text-dark);font-family:var(--condensed-font);">
 				<strong>YAML</strong>
-				<div style="display:flex;gap:8px;">
+				<div style="display:flex;gap:8px;align-items:center;">
+					<button id="modal-reset" title="Reset to default" style="background:none;border:none;color:inherit;cursor:pointer;opacity:.5;font-size:18px;padding:0;line-height:1;">↺</button>
 					<button id="modal-apply" style="padding:6px 14px;border-radius:6px;border:none;cursor:pointer;background:var(--button-dark);color:var(--button-text-dark);font-family:var(--condensed-font);">Apply</button>
 					<button id="modal-copy"  style="padding:6px 14px;border-radius:6px;border:none;cursor:pointer;background:var(--button-dark);color:var(--button-text-dark);font-family:var(--condensed-font);">Copy</button>
 					<button id="modal-close" style="padding:6px 14px;border-radius:6px;border:none;cursor:pointer;background:#444;color:white;font-family:var(--condensed-font);">✕</button>
@@ -1370,10 +1594,18 @@ document.getElementById('btn-export').addEventListener('click', () => {
 	textarea.value = yaml;
 	document.body.appendChild(yamlModal);
 
-	yamlModal.querySelector('#modal-apply').addEventListener('click', () => {
+	yamlModal.querySelector('#modal-reset').addEventListener('click', () => {
+		const defaultData = structuredClone(window.CV_DATA || {});
+		if (Array.isArray(defaultData.experience)) defaultData.experience = defaultData.experience.map(e => stripEmpty(reorderKeys(e, EXP_ORDER)));
+		if (Array.isArray(defaultData.education))  defaultData.education  = defaultData.education.map(e => stripEmpty(reorderKeys(e, EDU_ORDER)));
+		textarea.value = toYaml(stripEmpty(reorderKeys(defaultData, TOP_ORDER)));
+	});
+
+	yamlModal.querySelector('#modal-apply').addEventListener('click', async () => {
 		try {
 			const parsed = jsyaml.load(textarea.value);
 			if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('YAML must be a mapping');
+			if (parsed.photo) parsed.photo = await ensureRef(parsed.photo);
 			for (const k of Object.keys(state)) delete state[k];
 			Object.assign(state, parsed);
 			persist();
