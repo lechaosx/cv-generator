@@ -426,9 +426,14 @@ function activateOnInteract(el) {
 		el.focus();
 		if (x != null) placeCaretAtPoint(x, y);
 	}
-	el.addEventListener('dblclick', e => { e.stopPropagation(); e.preventDefault(); enterEdit(e.clientX, e.clientY); });
+	el.addEventListener('dblclick', e => {
+		if (el.contentEditable === 'true') return;
+		e.stopPropagation(); e.preventDefault();
+		enterEdit(e.clientX, e.clientY);
+	});
 	let pressTimer;
 	el.addEventListener('touchstart', e => {
+		if (el.contentEditable === 'true') return;
 		const t = e.touches[0];
 		const x = t?.clientX, y = t?.clientY;
 		pressTimer = setTimeout(() => { e.preventDefault(); enterEdit(x, y); }, 500);
@@ -638,9 +643,14 @@ function makeStringList(container, get, set, normalize, placeholderKey) {
 					el.focus();
 					if (x != null) placeCaretAtPoint(x, y);
 				};
-				el.addEventListener('dblclick', e => { e.stopPropagation(); e.preventDefault(); enterEdit(e.clientX, e.clientY); });
+				el.addEventListener('dblclick', e => {
+					if (el.contentEditable === 'true') return;
+					e.stopPropagation(); e.preventDefault();
+					enterEdit(e.clientX, e.clientY);
+				});
 				let pressTimer;
 				el.addEventListener('touchstart', e => {
+					if (el.contentEditable === 'true') return;
 					const t = e.touches[0];
 					const x = t?.clientX, y = t?.clientY;
 					pressTimer = setTimeout(() => { e.preventDefault(); enterEdit(x, y); }, 500);
