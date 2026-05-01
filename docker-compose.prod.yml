@@ -1,20 +1,12 @@
 services:
-  watchtower:
-    image: containrrr/watchtower
-    command:
-      - --label-enable
-      - --interval=30
-      - --rolling-restart
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - $HOME/.docker/config.json:/config.json
-    restart: unless-stopped
-
   redis:
     image: redis:latest
     volumes:
       - redis-data-prod:/data
-    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
 
   backend:
     image: ghcr.io/lechaosx/cv-generator/backend:prod
@@ -23,16 +15,24 @@ services:
       DOMAINS_CONFIG: /config/domains.json
     secrets:
       - openai_key
-    volumes:
-      - ./config/domains.json:/config/domains.json:ro
-    depends_on:
-      - redis
+    configs:
+      - source: domains
+        target: /config/domains.json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
     deploy:
-      mode: replicated
-      replicas: 2
-    restart: unless-stopped
-    labels:
-      - com.centurylinklabs.watchtower.enable=true
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      restart_policy:
+        condition: any
 
   caddy:
     image: caddy:alpine
@@ -40,16 +40,25 @@ services:
       - 80:80
       - 443:443
     volumes:
-      - ./Caddyfile.prod:/etc/caddy/Caddyfile
       - caddy-data:/data
-    depends_on:
-      - backend
-    restart: unless-stopped
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
 
 volumes:
   redis-data-prod:
   caddy-data:
 
+configs:
+  domains:
+    file: ./config/domains.json
+  caddyfile:
+    file: ./Caddyfile.prod
+
 secrets:
   openai_key:
-    file: ./secrets/openai_key
+    file: ./openai_key
