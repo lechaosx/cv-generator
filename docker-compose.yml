@@ -6,7 +6,7 @@ services:
 
   backend:
     build:
-      context: backend
+      context: .
       target: dev
     environment:
       OPENAI_KEY: /run/secrets/openai_key
@@ -15,7 +15,7 @@ services:
     secrets:
       - openai_key
     volumes:
-      - ./backend/src:/app/src
+      - ./src:/app/src
       - ./config/domains.json:/config/domains.json:ro
       - ${DEFAULT_CV:-./data/cv.yaml}:/data/default.yaml:ro
     depends_on:

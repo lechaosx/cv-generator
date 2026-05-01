@@ -1,2 +1,5 @@
 /secrets/
 /openai_key
+
+**/__pycache__/
+**/.venv/

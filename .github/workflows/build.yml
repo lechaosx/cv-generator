@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE: ghcr.io/lechaosx/cv-generator/backend
+  IMAGE: ghcr.io/lechaosx/cv-generator/cv-generator
 
 jobs:
   build:
@@ -33,7 +33,7 @@ jobs:
     - name: Build and Push Backend Docker Image
       uses: docker/build-push-action@v6
       with:
-        context: ./backend
+        context: .
         target: prod
         platforms: linux/arm64
         push: true

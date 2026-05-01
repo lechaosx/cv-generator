@@ -9,7 +9,7 @@ services:
         condition: any
 
   backend:
-    image: ghcr.io/lechaosx/cv-generator/backend:prod
+    image: ghcr.io/lechaosx/cv-generator/cv-generator:prod
     environment:
       OPENAI_KEY: /run/secrets/openai_key
       DOMAINS_CONFIG: /config/domains.json
