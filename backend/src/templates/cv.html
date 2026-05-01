@@ -138,6 +138,9 @@
 			</section>
 		</div>
 	</main>
+	{% if not edit_mode %}
+	<a href="/edit" class="edit-link" title="Edit" aria-label="Edit">{{ get_icon('lucide/pencil') | safe }}</a>
+	{% endif %}
 	{% if edit_mode %}
 	<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
 	<script>
