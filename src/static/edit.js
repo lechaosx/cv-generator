@@ -1214,71 +1214,19 @@ for (const [ck, base] of Object.entries(colorLinks)) {
 const toolbar = document.createElement('div');
 toolbar.id = 'edit-toolbar';
 toolbar.innerHTML = `
-	<span style="flex:1;opacity:.5">✏️ Click any text to edit</span>
-	<select id="lang-select" title="Language">
-		${Object.keys(LABELS).map(code => `<option value="${code}">${({ en: 'English', cs: 'Čeština' })[code] || code}</option>`).join('')}
-	</select>
 	<button id="btn-undo" title="Undo (Ctrl+Z)">↩</button>
 	<button id="btn-redo" title="Redo (Ctrl+Y)">↪</button>
 	<button id="btn-reset">Reset</button>
+	<select id="lang-select" title="Language">
+		${Object.keys(LABELS).map(code => `<option value="${code}">${({ en: 'English', cs: 'Čeština' })[code] || code}</option>`).join('')}
+	</select>
 	<button id="btn-colors">🎨 Colors</button>
-	<button id="btn-preview">Preview</button>
+	<span style="flex:1"></span>
 	<button id="btn-export">📋 YAML</button>
+	<button id="btn-preview">Preview</button>
 `;
 document.body.appendChild(toolbar);
 document.body.style.paddingBottom = toolbar.offsetHeight + 'px';
-
-if (seed && token) {
-	const btnSave = document.createElement('button');
-	btnSave.id = 'btn-save';
-	btnSave.textContent = 'Save';
-	toolbar.insertBefore(btnSave, document.getElementById('btn-preview'));
-
-	btnSave.addEventListener('click', async () => {
-		btnSave.disabled = true;
-		try {
-			const out  = await buildExport();
-			const resp = await fetch(`/save?seed=${encodeURIComponent(seed)}&token=${encodeURIComponent(token)}`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(out),
-			});
-			btnSave.textContent = resp.ok ? '✓ Saved' : '✗ Failed';
-		} catch {
-			btnSave.textContent = '✗ Error';
-		} finally {
-			btnSave.disabled = false;
-			setTimeout(() => { btnSave.textContent = 'Save'; }, 2000);
-		}
-	});
-} else {
-	const btnFork = document.createElement('button');
-	btnFork.id = 'btn-fork';
-	btnFork.textContent = 'Fork';
-	toolbar.insertBefore(btnFork, document.getElementById('btn-preview'));
-
-	btnFork.addEventListener('click', async () => {
-		btnFork.disabled = true;
-		try {
-			const out  = await buildExport();
-			const resp = await fetch('/fork', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(out),
-			});
-			if (resp.ok) {
-				const { url } = await resp.json();
-				location.href = url;
-			} else {
-				btnFork.textContent = '✗ Failed';
-				setTimeout(() => { btnFork.textContent = 'Fork'; btnFork.disabled = false; }, 2000);
-			}
-		} catch {
-			btnFork.textContent = '✗ Error';
-			setTimeout(() => { btnFork.textContent = 'Fork'; btnFork.disabled = false; }, 2000);
-		}
-	});
-}
 
 if (seed) {
 	const roUrl = `${location.origin}/?seed=${encodeURIComponent(seed)}`;
@@ -1287,7 +1235,7 @@ if (seed) {
 	const sharePanel = document.createElement('div');
 	sharePanel.id = 'share-panel';
 	sharePanel.style.cssText = `
-		position:fixed; bottom:52px; left:20px; z-index:9998;
+		position:fixed; bottom:52px; right:20px; z-index:9998;
 		background:var(--panel-dark); border:1px solid var(--light); border-radius:8px;
 		padding:16px; display:none; flex-direction:column; gap:10px;
 		font-family:var(--condensed-font); font-size:13px; color:var(--text-dark); min-width:340px;
@@ -1324,7 +1272,7 @@ if (seed) {
 	const btnShare = document.createElement('button');
 	btnShare.id = 'btn-share';
 	btnShare.textContent = 'Share';
-	toolbar.insertBefore(btnShare, document.getElementById('btn-preview'));
+	toolbar.appendChild(btnShare);
 
 	btnShare.addEventListener('click', () => {
 		sharePanel.style.display = sharePanel.style.display === 'flex' ? 'none' : 'flex';
@@ -1332,6 +1280,58 @@ if (seed) {
 	document.addEventListener('click', e => {
 		if (!sharePanel.contains(e.target) && e.target !== btnShare)
 			sharePanel.style.display = 'none';
+	});
+}
+
+if (seed && token) {
+	const btnSave = document.createElement('button');
+	btnSave.id = 'btn-save';
+	btnSave.textContent = 'Save';
+	toolbar.appendChild(btnSave);
+
+	btnSave.addEventListener('click', async () => {
+		btnSave.disabled = true;
+		try {
+			const out  = await buildExport();
+			const resp = await fetch(`/save?seed=${encodeURIComponent(seed)}&token=${encodeURIComponent(token)}`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(out),
+			});
+			btnSave.textContent = resp.ok ? '✓ Saved' : '✗ Failed';
+		} catch {
+			btnSave.textContent = '✗ Error';
+		} finally {
+			btnSave.disabled = false;
+			setTimeout(() => { btnSave.textContent = 'Save'; }, 2000);
+		}
+	});
+} else {
+	const btnFork = document.createElement('button');
+	btnFork.id = 'btn-fork';
+	btnFork.textContent = 'Fork';
+	toolbar.appendChild(btnFork);
+
+	btnFork.addEventListener('click', async () => {
+		btnFork.disabled = true;
+		try {
+			const out  = await buildExport();
+			const resp = await fetch('/fork', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(out),
+			});
+			if (resp.ok) {
+				const { url } = await resp.json();
+				location.href = url;
+			} else {
+				btnFork.textContent = '✗ Failed';
+				setTimeout(() => { btnFork.textContent = 'Fork'; btnFork.disabled = false; }, 2000);
+			}
+		} catch {
+			btnFork.textContent = '✗ Error';
+			setTimeout(() => { btnFork.textContent = 'Fork'; btnFork.disabled = false; }, 2000);
+		}
 	});
 }
 
