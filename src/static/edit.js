@@ -374,7 +374,6 @@ style.textContent = `
 	.cv-field { cursor: text; }
 	.cv-field[contenteditable="false"] { user-select: none; }
 	.cv-field:hover { outline: 1px dashed var(--border); border-radius: 2px; }
-	[contenteditable="true"]:focus { outline: 2px solid var(--border) !important; border-radius: 2px; }
 
 	body.drag-active:not(.photo-modal-open) .photo.drop-target img,
 	body.drag-active:not(.photo-modal-open) .photo.drop-target svg,
