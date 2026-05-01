@@ -374,21 +374,45 @@ style.textContent = `
 	[draggable="true"].drag-item:active,
 	[draggable="true"].edit-link-row:active,
 	[draggable="true"].timeline-entry:active { cursor: grabbing; }
+	.drag-item > *,
+	.edit-link-row > span { cursor: text; }
 	.dragging { opacity: .4; }
 `;
 document.head.appendChild(style);
 
 // ── Text editing ──────────────────────────────────────────────────────────────
 
+function placeCaretAtPoint(x, y) {
+	let range;
+	if (document.caretRangeFromPoint) {
+		range = document.caretRangeFromPoint(x, y);
+	} else if (document.caretPositionFromPoint) {
+		const pos = document.caretPositionFromPoint(x, y);
+		if (pos) {
+			range = document.createRange();
+			range.setStart(pos.offsetNode, pos.offset);
+			range.collapse(true);
+		}
+	}
+	if (range) {
+		const sel = window.getSelection();
+		sel.removeAllRanges();
+		sel.addRange(range);
+	}
+}
+
 function activateOnInteract(el) {
-	function enterEdit() {
+	function enterEdit(x, y) {
 		el.contentEditable = 'true';
 		el.focus();
+		if (x != null) placeCaretAtPoint(x, y);
 	}
-	el.addEventListener('dblclick', e => { e.stopPropagation(); e.preventDefault(); enterEdit(); });
+	el.addEventListener('dblclick', e => { e.stopPropagation(); e.preventDefault(); enterEdit(e.clientX, e.clientY); });
 	let pressTimer;
 	el.addEventListener('touchstart', e => {
-		pressTimer = setTimeout(() => { e.preventDefault(); enterEdit(); }, 500);
+		const t = e.touches[0];
+		const x = t?.clientX, y = t?.clientY;
+		pressTimer = setTimeout(() => { e.preventDefault(); enterEdit(x, y); }, 500);
 	}, { passive: false });
 	el.addEventListener('touchmove',  () => clearTimeout(pressTimer));
 	el.addEventListener('touchend',   () => clearTimeout(pressTimer));
@@ -585,11 +609,18 @@ function makeStringList(container, get, set, normalize, placeholder) {
 			el.setAttribute('data-placeholder', placeholder);
 
 			if (isNonEmpty) {
-				const enterEdit = () => { wrap.draggable = false; el.contentEditable = 'true'; el.focus(); };
-				el.addEventListener('dblclick', e => { e.stopPropagation(); e.preventDefault(); enterEdit(); });
+				const enterEdit = (x, y) => {
+					wrap.draggable = false;
+					el.contentEditable = 'true';
+					el.focus();
+					if (x != null) placeCaretAtPoint(x, y);
+				};
+				el.addEventListener('dblclick', e => { e.stopPropagation(); e.preventDefault(); enterEdit(e.clientX, e.clientY); });
 				let pressTimer;
 				el.addEventListener('touchstart', e => {
-					pressTimer = setTimeout(() => { e.preventDefault(); enterEdit(); }, 500);
+					const t = e.touches[0];
+					const x = t?.clientX, y = t?.clientY;
+					pressTimer = setTimeout(() => { e.preventDefault(); enterEdit(x, y); }, 500);
 				}, { passive: false });
 				el.addEventListener('touchmove',  () => clearTimeout(pressTimer));
 				el.addEventListener('touchend',   () => clearTimeout(pressTimer));
