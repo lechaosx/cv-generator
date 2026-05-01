@@ -112,9 +112,9 @@ function persistRaw(snapshot) {
 	localStorage.setItem(COLORS_KEY, JSON.stringify(themeColors));
 	const linkDelta = {};
 	for (const [k, v] of Object.entries(colorLinks)) {
-		if (DEFAULT_LINKS[k] !== v) linkDelta[k] = v;
+		if (BASE_LINKS[k] !== v) linkDelta[k] = v;
 	}
-	for (const k of Object.keys(DEFAULT_LINKS)) {
+	for (const k of Object.keys(BASE_LINKS)) {
 		if (!colorLinks[k]) linkDelta[k] = '';
 	}
 	localStorage.setItem(LINKS_KEY, JSON.stringify(linkDelta));
@@ -1150,52 +1150,58 @@ if (eduTimeline) {
 const root = document.documentElement;
 const computed = getComputedStyle(root);
 
-const BASE_COLORS   = ['background', 'dark', 'light', 'white', 'black'];
-const PANEL_COLORS  = ['panel-dark', 'panel-light'];
-const DARK_COLORS   = ['text-dark', 'link-dark', 'name-dark', 'position-dark', 'header-dark', 'header-border-dark', 'border-dark', 'icon-dark', 'timeline-dark', 'badge-dark', 'badge-text-dark', 'button-dark', 'button-text-dark'];
-const LIGHT_COLORS  = ['text-light', 'link-light', 'name-light', 'position-light', 'header-light', 'header-border-light', 'border-light', 'icon-light', 'timeline-light', 'badge-light', 'badge-text-light', 'button-light', 'button-text-light'];
-const BASE_LABELS   = { background: 'Background', dark: 'Dark', light: 'Accent', white: 'White', black: 'Black' };
-const DEFAULT_BASE_VALUES = { background: '#2a2a2e', dark: '#283649', light: '#9c7843', white: '#ffffff', black: '#000000' };
-const VARIANT_LABELS = {
-	'text-dark': 'Text',          'text-light': 'Text',
-	'link-dark': 'Link',          'link-light': 'Link',
-	'name-dark': 'Name',          'name-light': 'Name',
-	'position-dark': 'Position',  'position-light': 'Position',
-	'header-dark': 'Header',      'header-light': 'Header',
-	'header-border-dark': 'Header border', 'header-border-light': 'Header border',
-	'border-dark': 'Border',      'border-light': 'Border',
-	'icon-dark': 'Icon',          'icon-light': 'Icon',
-	'timeline-dark': 'Timeline',  'timeline-light': 'Timeline',
-	'badge-dark': 'Badge',        'badge-light': 'Badge',
-	'badge-text-dark': 'Badge text', 'badge-text-light': 'Badge text',
-	'button-dark': 'Button',      'button-light': 'Button',
-	'button-text-dark': 'Button text', 'button-text-light': 'Button text',
-};
+const { BASE_COLORS, DEFAULT_BASE_VALUES, DEFAULT_LINKS } = (() => {
+	const BASE_COLORS = [], DEFAULT_BASE_VALUES = {}, DEFAULT_LINKS = {};
+	for (const sheet of document.styleSheets) {
+		if (!sheet.href?.includes('/static/style.css')) continue;
+		try {
+			for (const rule of sheet.cssRules) {
+				if (rule.selectorText !== ':root') continue;
+				for (let i = 0; i < rule.style.length; i++) {
+					const prop = rule.style[i];
+					if (!prop.startsWith('--')) continue;
+					const key = prop.slice(2);
+					const val = rule.style.getPropertyValue(prop).trim();
+					if (val.startsWith('#')) { BASE_COLORS.push(key); DEFAULT_BASE_VALUES[key] = val; }
+				}
+				for (let i = 0; i < rule.style.length; i++) {
+					const prop = rule.style[i];
+					if (!prop.startsWith('--')) continue;
+					const key = prop.slice(2);
+					const val = rule.style.getPropertyValue(prop).trim();
+					const m = val.match(/^var\(--([a-z-]+)\)$/);
+					if (m && BASE_COLORS.includes(m[1])) DEFAULT_LINKS[key] = m[1];
+				}
+				break;
+			}
+		} catch {}
+	}
+	return { BASE_COLORS, DEFAULT_BASE_VALUES, DEFAULT_LINKS };
+})();
 
-const LINK_BASES  = ['dark', 'light', 'white', 'black'];
-const LINK_LABELS = { dark: 'Dark', light: 'Accent', white: 'White', black: 'Black' };
-const DEFAULT_LINKS = {
-	'panel-dark': 'dark',          'panel-light': 'white',
-	'text-dark': 'white',          'text-light': 'black',
-	'link-dark': 'white',          'link-light': 'black',
-	'name-dark': 'white',          'name-light': 'dark',
-	'position-dark': 'light',      'position-light': 'light',
-	'header-dark': 'light',        'header-light': 'black',
-	'header-border-dark': 'white', 'header-border-light': 'black',
-	'border-dark': 'light',        'border-light': 'light',
-	'icon-dark': 'light',          'icon-light': 'light',
-	'timeline-dark': 'light',      'timeline-light': 'light',
-	'badge-dark': 'light',         'badge-light': 'light',
-	'badge-text-dark': 'white',    'badge-text-light': 'white',
-	'button-dark': 'light',        'button-light': 'light',
-	'button-text-dark': 'black',   'button-text-light': 'black',
-};
+const VARIANT_KEYS  = Object.keys(DEFAULT_LINKS);
+const PANEL_COLORS  = VARIANT_KEYS.filter(k => k.startsWith('panel'));
+const DARK_COLORS   = VARIANT_KEYS.filter(k => k.endsWith('-dark')  && !k.startsWith('panel'));
+const LIGHT_COLORS  = VARIANT_KEYS.filter(k => k.endsWith('-light') && !k.startsWith('panel'));
+const LINK_BASES    = [...new Set(Object.values(DEFAULT_LINKS))].sort((a, b) => BASE_COLORS.indexOf(a) - BASE_COLORS.indexOf(b));
+
+const BASE_LABEL_OVERRIDES = { light: 'Accent' };
+const BASE_LABELS = Object.fromEntries(BASE_COLORS.map(k => [k, BASE_LABEL_OVERRIDES[k] || k.charAt(0).toUpperCase() + k.slice(1)]));
+
+function variantLabel(key) {
+	return key.replace(/-(dark|light)$/, '').split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
 
 const themeKeys = [...new Set([...BASE_COLORS, ...PANEL_COLORS, ...DARK_COLORS, ...LIGHT_COLORS,
 	...Object.keys(state.theme || {}).filter(k => !BASE_COLORS.includes(k) && !PANEL_COLORS.includes(k) && !DARK_COLORS.includes(k) && !LIGHT_COLORS.includes(k))])];
 const savedColors = JSON.parse(localStorage.getItem(COLORS_KEY) || '{}');
-// Always start from DEFAULT_LINKS, apply only user overrides on top
-colorLinks = { ...DEFAULT_LINKS };
+const BASE_LINKS = { ...DEFAULT_LINKS };
+for (const [k, v] of Object.entries(state.theme || {})) {
+	if (BASE_COLORS.includes(k) || PANEL_COLORS.includes(k)) continue;
+	if (String(v).startsWith('--')) BASE_LINKS[k] = String(v).slice(2);
+	else delete BASE_LINKS[k];
+}
+colorLinks = { ...BASE_LINKS };
 const savedLinkDelta = JSON.parse(localStorage.getItem(LINKS_KEY) || '{}');
 for (const [k, v] of Object.entries(savedLinkDelta)) {
 	if (v) colorLinks[k] = v;
@@ -1381,7 +1387,7 @@ function makeVariantControls(k) {
 	for (const base of LINK_BASES) {
 		const dot = document.createElement('button');
 		dot.className = 'color-link-dot';
-		dot.title = LINK_LABELS[base];
+		dot.title = BASE_LABELS[base];
 		dot.style.background = `var(--${base})`;
 		if (colorLinks[k] === base) dot.classList.add('active');
 		dot.addEventListener('click', () => {
@@ -1421,12 +1427,12 @@ function makeVariantControls(k) {
 	resetBtn.title = 'Reset to default';
 	resetBtn.textContent = '↺';
 	const checkReset = () => {
-		resetBtn.style.opacity = colorLinks[k] === DEFAULT_LINKS[k] ? '0' : '';
+		resetBtn.style.opacity = colorLinks[k] === BASE_LINKS[k] ? '0' : '';
 	};
 	checkReset();
 	resetBtn.addEventListener('click', () => {
 		if (colorLinks[k]) dots[colorLinks[k]]?.classList.remove('active');
-		const defaultLink = DEFAULT_LINKS[k];
+		const defaultLink = BASE_LINKS[k];
 		if (defaultLink) {
 			colorLinks[k] = defaultLink;
 			dots[defaultLink]?.classList.add('active');
@@ -1508,7 +1514,7 @@ function buildColorPanelContent() {
 
 	for (let i = 0; i < DARK_COLORS.length; i++) {
 		const label = document.createElement('div');
-		label.textContent = VARIANT_LABELS[DARK_COLORS[i]];
+		label.textContent = variantLabel(DARK_COLORS[i]);
 		label.style.cssText = 'font-size:13px;';
 		variants.appendChild(label);
 		variants.appendChild(makeVariantControls(DARK_COLORS[i]));
@@ -1546,21 +1552,28 @@ document.addEventListener('keydown', e => {
 
 function buildResetSnapshot() {
 	const resetState = structuredClone(window.CV_DATA);
-	const resetColorLinks = { ...DEFAULT_LINKS };
+	const resetColorLinks = { ...BASE_LINKS };
 	const resetThemeColors = {};
 	for (const k of BASE_COLORS) {
 		const yamlVal = resetState.theme?.[k];
 		resetThemeColors[k] = (yamlVal && String(yamlVal).startsWith('#')) ? yamlVal : DEFAULT_BASE_VALUES[k];
 	}
 	for (const k of [...PANEL_COLORS, ...DARK_COLORS, ...LIGHT_COLORS]) {
-		const link = DEFAULT_LINKS[k];
-		resetThemeColors[k] = link ? resetThemeColors[link] : '#000000';
+		const link = BASE_LINKS[k];
+		if (link) {
+			resetThemeColors[k] = resetThemeColors[link] || '#000000';
+		} else {
+			const s = String(resetState.theme?.[k] ?? '');
+			if (s.startsWith('#')) resetThemeColors[k] = s;
+			else if (s.startsWith('--')) resetThemeColors[k] = resetThemeColors[s.slice(2)] || '#000000';
+			else resetThemeColors[k] = '#000000';
+		}
 	}
 	return { state: resetState, themeColors: resetThemeColors, colorLinks: resetColorLinks };
 }
 
 document.getElementById('btn-reset').addEventListener('click', () => {
-	trackUndo();
+	trackUndo(captureSnapshot());
 	restoreSnapshot(buildResetSnapshot());
 	saveUndoHistory();
 });
