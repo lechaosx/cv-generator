@@ -107,7 +107,7 @@ function updateLabels() {
 	if (ls && ls.value !== state.language) ls.value = state.language;
 }
 
-function persistRaw() {
+function persistRaw(snapshot) {
 	localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 	localStorage.setItem(COLORS_KEY, JSON.stringify(themeColors));
 	const linkDelta = {};
@@ -118,12 +118,23 @@ function persistRaw() {
 		if (!colorLinks[k]) linkDelta[k] = '';
 	}
 	localStorage.setItem(LINKS_KEY, JSON.stringify(linkDelta));
-	lastSaved = captureSnapshot();
+	lastSaved = snapshot ?? captureSnapshot();
 }
 
 function persist() {
-	trackUndo();
-	persistRaw();
+	const current = captureSnapshot();
+	trackUndo(current);
+	persistRaw(current);
+}
+
+function trackUndo(current) {
+	if (!lastSaved) return;
+	if (JSON.stringify(current) === JSON.stringify(lastSaved)) return;
+	undoStack.push(lastSaved);
+	if (undoStack.length > 100) undoStack.shift();
+	redoStack = [];
+	saveUndoHistory();
+	updateUndoButtons();
 }
 
 // ── Undo / Redo ───────────────────────────────────────────────────────────────
@@ -162,16 +173,6 @@ function updateUndoButtons() {
 	if (r) r.disabled = !redoStack.length;
 }
 
-function trackUndo() {
-	if (!lastSaved) return;
-	const top = undoStack[undoStack.length - 1];
-	if (top && JSON.stringify(top) === JSON.stringify(lastSaved)) return;
-	undoStack.push(lastSaved);
-	if (undoStack.length > 100) undoStack.shift();
-	redoStack = [];
-	saveUndoHistory();
-	updateUndoButtons();
-}
 
 function restoreSnapshot(snap) {
 	for (const k of Object.keys(state)) delete state[k];
@@ -185,8 +186,8 @@ function restoreSnapshot(snap) {
 		root.style.setProperty(`--${k}`, link ? (themeColors[link] || '#000000') : (themeColors[k] || ''));
 	}
 	buildColorPanelContent();
-	persistRaw();
 	render();
+	persistRaw();
 	updateUndoButtons();
 }
 
@@ -268,6 +269,7 @@ function normalizeExperience() {
 		() => ({ company: '', title: '', start_month: '', start_year: '', end_month: '', end_year: '', description: [], badges: [] }),
 		true
 	);
+	for (const i of state.experience.keys()) normalizeBadges(i);
 }
 
 function normalizeEducation() {
@@ -1645,7 +1647,6 @@ function render() {
 	normalizeLinks();
 	normalizeExperience();
 	normalizeEducation();
-	for (const i of state.experience.keys()) normalizeBadges(i);
 
 	renderStatic();
 	renderPhoto();
