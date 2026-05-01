@@ -1226,6 +1226,29 @@ document.getElementById('btn-reset').addEventListener('click', () => {
 
 // ── State → YAML / preview ─────────────────────────────────────────────────────
 
+const TOP_ORDER = ['title_before_name', 'name', 'title_after_name', 'position', 'phone', 'email', 'location', 'photo', 'description', 'interests', 'links', 'theme', 'experience', 'education', 'language'];
+const EXP_ORDER = ['title', 'company', 'start_month', 'start_year', 'end_month', 'end_year', 'description', 'badges'];
+const EDU_ORDER = ['title', 'institution', 'subinstitution', 'start_month', 'start_year', 'end_month', 'end_year', 'description'];
+
+function reorderKeys(obj, order) {
+	const out = {};
+	for (const k of order) if (k in obj) out[k] = obj[k];
+	for (const k of Object.keys(obj)) if (!(k in out)) out[k] = obj[k];
+	return out;
+}
+
+function stripEmpty(obj) {
+	const out = {};
+	for (const [k, v] of Object.entries(obj)) {
+		if (v == null) continue;
+		if (typeof v === 'string' && !v.trim()) continue;
+		if (Array.isArray(v) && v.length === 0) continue;
+		if (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0) continue;
+		out[k] = v;
+	}
+	return out;
+}
+
 function buildExport() {
 	const out = structuredClone(state);
 
@@ -1263,7 +1286,9 @@ function buildExport() {
 	if (Object.keys(theme).length) out.theme = theme;
 	else delete out.theme;
 	if (out.photo?.startsWith('data:')) out.photo = '';
-	return out;
+	if (Array.isArray(out.experience)) out.experience = out.experience.map(e => stripEmpty(reorderKeys(e, EXP_ORDER)));
+	if (Array.isArray(out.education))  out.education  = out.education.map(e => stripEmpty(reorderKeys(e, EDU_ORDER)));
+	return stripEmpty(reorderKeys(out, TOP_ORDER));
 }
 
 // ── Render: rebuild the entire view from state ────────────────────────────────
