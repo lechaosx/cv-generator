@@ -7,10 +7,28 @@ const UNDO_KEY    = `cv-edit-undo:${location.host}`;
 
 const saved = localStorage.getItem(STORAGE_KEY);
 const state = saved ? JSON.parse(saved) : structuredClone(window.CV_DATA);
+const LABELS = window.CV_LABELS || { en: {} };
+if (!state.language || !LABELS[state.language]) state.language = 'en';
 let themeColors = {};
 let colorLinks  = {};
 const colorInputs = {};
 const timelineRenderers = {};
+
+function t(key) {
+	return (LABELS[state.language] || LABELS.en || {})[key] || key;
+}
+
+function updateLabels() {
+	document.querySelectorAll('[data-label]').forEach(el => {
+		el.textContent = t(el.dataset.label);
+	});
+	document.querySelectorAll('[data-placeholder-key]').forEach(el => {
+		el.setAttribute('data-placeholder', t(el.dataset.placeholderKey));
+	});
+	document.documentElement.lang = state.language;
+	const ls = document.getElementById('lang-select');
+	if (ls && ls.value !== state.language) ls.value = state.language;
+}
 
 function persistRaw() {
 	localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -304,12 +322,13 @@ style.textContent = `
 		display: flex; gap: 10px; padding: 10px 20px; align-items: center;
 		font-family: var(--condensed-font); font-size: 14px; color: var(--text-dark);
 	}
-	#edit-toolbar button {
+	#edit-toolbar button,
+	#edit-toolbar select {
 		padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer;
 		background: var(--button-dark); color: var(--button-text-dark);
 		font-family: var(--condensed-font); font-size: 14px;
 	}
-	#edit-toolbar button:hover { opacity: .8; }
+	#edit-toolbar button:hover, #edit-toolbar select:hover { opacity: .8; }
 	#edit-toolbar button:disabled { opacity: .3; cursor: default; pointer-events: none; }
 	#btn-reset { background: #5a2a2a !important; color: white !important; }
 	#edit-color-panel {
@@ -418,7 +437,7 @@ function activateOnInteract(el) {
 	el.addEventListener('touchend',   () => clearTimeout(pressTimer));
 }
 
-function setupEditable(el, path, placeholder, afterBlur = persist) {
+function setupEditable(el, path, placeholderKey, afterBlur = persist) {
 	const v = getPath(state, path);
 	const hasValue = v != null && (Array.isArray(v) ? v.some(x => String(x).trim()) : String(v).trim() !== '');
 	const immediate = !hasValue;
@@ -426,7 +445,8 @@ function setupEditable(el, path, placeholder, afterBlur = persist) {
 	el.contentEditable = immediate ? 'true' : 'false';
 	el.draggable = false;
 	el.classList.add('cv-field');
-	el.setAttribute('data-placeholder', placeholder);
+	el.dataset.placeholderKey = placeholderKey;
+	el.setAttribute('data-placeholder', t(placeholderKey));
 
 	if (v != null) {
 		if (Array.isArray(v)) el.textContent = v.join(' ');
@@ -557,25 +577,27 @@ function enableDragSort(container, itemSelector, getList, setList, onChange, axi
 	});
 }
 
-// Static field map — [getter, statePath, placeholder]
+// Static field map — [getter, statePath, placeholderKey]
 const FIELD_MAP = [
-	[() => document.querySelectorAll('.main-info .title')[0], 'title_before_name', 'Title'],
-	[() => document.querySelector('h1'),                      'name',              'Full Name'],
-	[() => document.querySelectorAll('.main-info .title')[1], 'title_after_name',  'Title'],
-	[() => document.querySelector('.position'),               'position',          'Job Position'],
-	[() => document.querySelector('.contact-list div:nth-child(1) span'), 'location', 'Location'],
-	[() => document.querySelector('.contact-list div:nth-child(2) span'), 'phone',    'Phone'],
-	[() => document.querySelector('.contact-list div:nth-child(3) span'), 'email',    'Email'],
-	[() => document.querySelector('.additional-info section:first-child p'), 'description', 'Description'],
+	[() => document.querySelectorAll('.main-info .title')[0], 'title_before_name', 'title'],
+	[() => document.querySelector('h1'),                      'name',              'full_name'],
+	[() => document.querySelectorAll('.main-info .title')[1], 'title_after_name',  'title'],
+	[() => document.querySelector('.position'),               'position',          'job_position'],
+	[() => document.querySelector('.contact-list div:nth-child(1) span'), 'location', 'location'],
+	[() => document.querySelector('.contact-list div:nth-child(2) span'), 'phone',    'phone'],
+	[() => document.querySelector('.contact-list div:nth-child(3) span'), 'email',    'email'],
+	[() => document.querySelector('.additional-info section:first-child p'), 'description', 'description'],
 ];
 
 function renderStatic() {
-	for (const [getter, path, placeholder] of FIELD_MAP) {
+	for (const [getter, path, placeholderKey] of FIELD_MAP) {
 		const el = getter();
 		if (!el) continue;
 		if (!el.classList.contains('cv-field')) {
-			setupEditable(el, path, placeholder);
+			setupEditable(el, path, placeholderKey);
 		} else {
+			el.dataset.placeholderKey = placeholderKey;
+			el.setAttribute('data-placeholder', t(placeholderKey));
 			const v = getPath(state, path);
 			el.innerHTML = '';
 			if (v != null && v !== '') el.textContent = Array.isArray(v) ? v.join(' ') : v;
@@ -587,7 +609,7 @@ function renderStatic() {
 
 // makeStringList — for atomic-string lists (interests, badges).
 // State must already be normalised (real strings + a trailing '' if no draft).
-function makeStringList(container, get, set, normalize, placeholder) {
+function makeStringList(container, get, set, normalize, placeholderKey) {
 	function render() {
 		container.innerHTML = '';
 		const items = get();
@@ -606,7 +628,8 @@ function makeStringList(container, get, set, normalize, placeholder) {
 			el.textContent = item;
 			el.contentEditable = isNonEmpty ? 'false' : 'true';
 			el.draggable = false;
-			el.setAttribute('data-placeholder', placeholder);
+			el.dataset.placeholderKey = placeholderKey;
+			el.setAttribute('data-placeholder', t(placeholderKey));
 
 			if (isNonEmpty) {
 				const enterEdit = (x, y) => {
@@ -668,7 +691,7 @@ function renderInterests() {
 		() => state.interests,
 		v => { state.interests = v; },
 		normalizeInterests,
-		'Interest'
+		'interest'
 	);
 }
 
@@ -680,7 +703,7 @@ function setupConnectEdit() {
 	if (!section) {
 		section = document.createElement('section');
 		section.className = 'connect';
-		section.innerHTML = '<h2 class="section-header">Connect</h2>';
+		section.innerHTML = `<h2 class="section-header" data-label="connect">${t('connect')}</h2>`;
 		additionalInfo.insertBefore(section, additionalInfo.querySelector('.cv-gen'));
 	}
 
@@ -713,7 +736,8 @@ function setupConnectEdit() {
 		pEl.draggable = false;
 		pEl.textContent = link.platform;
 		pEl.style.cssText = 'min-width:60px;font-weight:bold;';
-		pEl.setAttribute('data-placeholder', 'Platform');
+		pEl.dataset.placeholderKey = 'platform';
+		pEl.setAttribute('data-placeholder', t('platform'));
 		if (!pEmpty) activateOnInteract(pEl);
 
 		const sep = document.createElement('span');
@@ -725,7 +749,8 @@ function setupConnectEdit() {
 		uEl.draggable = false;
 		uEl.textContent = link.url;
 		uEl.style.cssText = 'flex:1;';
-		uEl.setAttribute('data-placeholder', 'URL');
+		uEl.dataset.placeholderKey = 'url';
+		uEl.setAttribute('data-placeholder', t('url'));
 		if (!uEmpty) activateOnInteract(uEl);
 
 		let saveTimer;
@@ -790,7 +815,8 @@ function makeDateRange(prefix, sync) {
 
 	const presentText = document.createElement('span');
 	presentText.className = 'present-text';
-	presentText.textContent = 'present';
+	presentText.dataset.label = 'present';
+	presentText.textContent = t('present');
 
 	const dates = document.createElement('div');
 	dates.className = 'cv-dates';
@@ -806,7 +832,7 @@ function materializeExpEntry(idx, timelineEl) {
 	if (isReal) { left.draggable = true; left.dataset.dragIdx = idx; dragOnlyOutsideText(left); }
 
 	const company = document.createElement('strong');
-	setupEditable(company, `experience.${idx}.company`, 'Company', syncExperience);
+	setupEditable(company, `experience.${idx}.company`, 'company', syncExperience);
 
 	const dates = makeDateRange(`experience.${idx}`, syncExperience);
 
@@ -817,7 +843,7 @@ function materializeExpEntry(idx, timelineEl) {
 		() => state.experience[idx]?.badges || [],
 		v => { if (state.experience[idx]) state.experience[idx].badges = v; },
 		() => normalizeBadges(idx),
-		'Badge'
+		'badge'
 	);
 
 	left.append(company, dates, badgeList);
@@ -826,9 +852,9 @@ function materializeExpEntry(idx, timelineEl) {
 	right.classList.add('timeline-entry');
 	if (isReal) { right.draggable = true; right.dataset.dragIdx = idx; dragOnlyOutsideText(right); }
 	const title = document.createElement('strong');
-	setupEditable(title, `experience.${idx}.title`, 'Title', syncExperience);
+	setupEditable(title, `experience.${idx}.title`, 'title', syncExperience);
 	const desc = document.createElement('p');
-	setupEditable(desc, `experience.${idx}.description`, 'Description', syncExperience);
+	setupEditable(desc, `experience.${idx}.description`, 'description', syncExperience);
 
 	right.append(title, desc);
 	timelineEl.append(left, right);
@@ -842,11 +868,11 @@ function materializeEduEntry(idx, timelineEl) {
 	if (isReal) { left.draggable = true; left.dataset.dragIdx = idx; dragOnlyOutsideText(left); }
 
 	const institution = document.createElement('strong');
-	setupEditable(institution, `education.${idx}.institution`, 'Institution', syncEducation);
+	setupEditable(institution, `education.${idx}.institution`, 'institution', syncEducation);
 
 	const eduSub = document.createElement('div');
 	const eduSubSpan = document.createElement('span');
-	setupEditable(eduSubSpan, `education.${idx}.subinstitution`, 'Faculty', syncEducation);
+	setupEditable(eduSubSpan, `education.${idx}.subinstitution`, 'faculty', syncEducation);
 	eduSub.append(eduSubSpan);
 
 	const dates = makeDateRange(`education.${idx}`, syncEducation);
@@ -857,9 +883,9 @@ function materializeEduEntry(idx, timelineEl) {
 	right.classList.add('timeline-entry');
 	if (isReal) { right.draggable = true; right.dataset.dragIdx = idx; dragOnlyOutsideText(right); }
 	const title = document.createElement('strong');
-	setupEditable(title, `education.${idx}.title`, 'Title', syncEducation);
+	setupEditable(title, `education.${idx}.title`, 'title', syncEducation);
 	const desc = document.createElement('p');
-	setupEditable(desc, `education.${idx}.description`, 'Description', syncEducation);
+	setupEditable(desc, `education.${idx}.description`, 'description', syncEducation);
 
 	right.append(title, desc);
 	timelineEl.append(left, right);
@@ -956,6 +982,9 @@ const toolbar = document.createElement('div');
 toolbar.id = 'edit-toolbar';
 toolbar.innerHTML = `
 	<span style="flex:1;opacity:.5">✏️ Click any text to edit</span>
+	<select id="lang-select" title="Language">
+		${Object.keys(LABELS).map(code => `<option value="${code}">${({ en: 'English', cs: 'Čeština' })[code] || code}</option>`).join('')}
+	</select>
 	<button id="btn-undo" title="Undo (Ctrl+Z)">↩</button>
 	<button id="btn-redo" title="Redo (Ctrl+Y)">↪</button>
 	<button id="btn-reset">Reset</button>
@@ -1157,6 +1186,15 @@ document.getElementById('btn-colors').addEventListener('click', () => {
 document.getElementById('btn-undo').addEventListener('click', performUndo);
 document.getElementById('btn-redo').addEventListener('click', performRedo);
 
+const langSelect = document.getElementById('lang-select');
+langSelect.value = state.language;
+langSelect.addEventListener('change', () => {
+	state.language = langSelect.value;
+	persist();
+	updateLabels();
+	render();
+});
+
 document.addEventListener('keydown', e => {
 	if (document.activeElement?.getAttribute('contenteditable') === 'true') return;
 	if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); performUndo(); }
@@ -1233,6 +1271,7 @@ function buildExport() {
 let yamlModal = null;
 
 function render() {
+	if (!state.language || !LABELS[state.language]) state.language = 'en';
 	// Normalise every list — each enforces its own real/draft/empty invariants
 	normalizeInterests();
 	normalizeLinks();
@@ -1245,6 +1284,7 @@ function render() {
 	setupConnectEdit();
 	timelineRenderers.experience?.();
 	timelineRenderers.education?.();
+	updateLabels();
 	if (yamlModal) yamlModal.querySelector('textarea').value = toYaml(buildExport());
 }
 
