@@ -76,3 +76,10 @@ jobs:
           --with-registry-auth \
           --detach=false \
           cv
+
+        STATE=$(docker service inspect cv_backend --format '{{.UpdateStatus.State}}')
+        if [ "$STATE" = "rollback_completed" ] || [ "$STATE" = "rollback_started" ] || [ "$STATE" = "rollback_paused" ] || [ "$STATE" = "paused" ]; then
+          echo "::error::Deployment failed: service rolled back (state: $STATE)"
+          docker service ps cv_backend --no-trunc 2>&1 | tail -20
+          exit 1
+        fi
