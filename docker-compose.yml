@@ -1,25 +1,16 @@
 services:
-  redis:
-    image: redis:latest
-    volumes:
-      - redis-data:/data
-
   backend:
     build:
       context: .
       target: dev
     environment:
-      OPENAI_KEY: /run/secrets/openai_key
       DOMAINS_CONFIG: ${DOMAINS_CONFIG:-/config/domains.json}
       DEFAULT_CV: /data/default.yaml
-    secrets:
-      - openai_key
     volumes:
       - ./src:/app/src
       - ./config/domains.json:/config/domains.json:ro
       - ${DEFAULT_CV:-./data/cv.yaml}:/data/default.yaml:ro
-    depends_on:
-      - redis
+      - diskcache:/data
 
   caddy:
     image: caddy:alpine
@@ -31,8 +22,4 @@ services:
       - backend
 
 volumes:
-  redis-data:
-
-secrets:
-  openai_key:
-    file: ./secrets/openai_key
+  diskcache:

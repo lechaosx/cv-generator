@@ -74,14 +74,16 @@
 				{% endfor %}
 			</section>
 			{% endif %}
+			{% if not edit_mode %}
 			<section class="cv-gen">
-				<h2 class="section-header">Generate your own CV! (BETA)</h2>
+				<h2 class="section-header">Make your own CV!</h2>
 				<form method="GET" action="/">
-					<input type="url" name="url" value="{{ url }}" placeholder="URL with your info" required>
-					<button type="submit">Submit</button>
+					<input type="url" name="url" value="{{ url }}" placeholder="Link to your YAML">
+					<button type="submit">View</button>
 				</form>
 				{% if error %}<p class="cv-gen-error">{{ error }}</p>{% endif %}
 			</section>
+			{% endif %}
 		</div>
 		<div>
 			<section>
@@ -139,7 +141,7 @@
 		</div>
 	</main>
 	{% if not edit_mode %}
-	<a href="/edit" class="edit-link" title="Edit" aria-label="Edit">{{ get_icon('lucide/pencil') | safe }}</a>
+	<a href="/edit{% if seed %}?seed={{ seed }}{% elif url %}?url={{ url | urlencode }}{% endif %}" class="edit-link" title="Edit" aria-label="Edit">{{ get_icon('lucide/pencil') | safe }}</a>
 	{% endif %}
 	{% if edit_mode %}
 	<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>

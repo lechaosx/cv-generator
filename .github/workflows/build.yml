@@ -71,7 +71,6 @@ jobs:
       env:
         DOCKER_HOST: ssh://${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PORT }}
       run: |
-        printf '%s' "${{ secrets.OPENAI_KEY }}" > openai_key
         docker stack deploy \
           -c docker-compose.prod.yml \
           --with-registry-auth \

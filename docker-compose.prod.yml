@@ -1,20 +1,10 @@
 services:
-  redis:
-    image: redis:latest
-    volumes:
-      - redis-data-prod:/data
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: any
-
   backend:
     image: ghcr.io/lechaosx/cv-generator/cv-generator:prod
     environment:
-      OPENAI_KEY: /run/secrets/openai_key
       DOMAINS_CONFIG: /config/domains.json
-    secrets:
-      - openai_key
+    volumes:
+      - diskcache:/data
     configs:
       - source: domains
         target: /config/domains.json
@@ -50,7 +40,7 @@ services:
         condition: any
 
 volumes:
-  redis-data-prod:
+  diskcache:
   caddy-data:
 
 configs:
@@ -58,7 +48,3 @@ configs:
     file: ./config/domains.json
   caddyfile:
     file: ./Caddyfile.prod
-
-secrets:
-  openai_key:
-    file: ./openai_key

@@ -1,9 +1,22 @@
 (() => {
 
-const STORAGE_KEY = `cv-edit:${location.host}`;
-const COLORS_KEY  = `cv-edit-colors:${location.host}`;
-const LINKS_KEY   = `cv-edit-links:${location.host}`;
-const UNDO_KEY    = `cv-edit-undo:${location.host}`;
+const urlParams  = new URLSearchParams(location.search);
+const seed       = urlParams.get('seed');
+const tokenInUrl = urlParams.get('token');
+
+if (seed && tokenInUrl) {
+	localStorage.setItem(`cv-token:${seed}`, tokenInUrl);
+	urlParams.delete('token');
+	history.replaceState({}, '', location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : ''));
+}
+
+const editUrl     = urlParams.get('url');
+const stateKey    = seed || (editUrl ? `url:${editUrl}` : location.host);
+const token       = seed ? localStorage.getItem(`cv-token:${seed}`) : null;
+const STORAGE_KEY = `cv-edit:${stateKey}`;
+const COLORS_KEY  = `cv-edit-colors:${stateKey}`;
+const LINKS_KEY   = `cv-edit-links:${stateKey}`;
+const UNDO_KEY    = `cv-edit-undo:${stateKey}`;
 const PHOTO_DB    = 'cv-edit';
 const PHOTO_STORE = 'photo';
 const PHOTO_REF_PREFIX = 'idb:';
@@ -1214,6 +1227,113 @@ toolbar.innerHTML = `
 `;
 document.body.appendChild(toolbar);
 document.body.style.paddingBottom = toolbar.offsetHeight + 'px';
+
+if (seed && token) {
+	const btnSave = document.createElement('button');
+	btnSave.id = 'btn-save';
+	btnSave.textContent = 'Save';
+	toolbar.insertBefore(btnSave, document.getElementById('btn-preview'));
+
+	btnSave.addEventListener('click', async () => {
+		btnSave.disabled = true;
+		try {
+			const out  = await buildExport();
+			const resp = await fetch(`/save?seed=${encodeURIComponent(seed)}&token=${encodeURIComponent(token)}`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(out),
+			});
+			btnSave.textContent = resp.ok ? '✓ Saved' : '✗ Failed';
+		} catch {
+			btnSave.textContent = '✗ Error';
+		} finally {
+			btnSave.disabled = false;
+			setTimeout(() => { btnSave.textContent = 'Save'; }, 2000);
+		}
+	});
+} else {
+	const btnFork = document.createElement('button');
+	btnFork.id = 'btn-fork';
+	btnFork.textContent = 'Fork';
+	toolbar.insertBefore(btnFork, document.getElementById('btn-preview'));
+
+	btnFork.addEventListener('click', async () => {
+		btnFork.disabled = true;
+		try {
+			const out  = await buildExport();
+			const resp = await fetch('/fork', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(out),
+			});
+			if (resp.ok) {
+				const { url } = await resp.json();
+				location.href = url;
+			} else {
+				btnFork.textContent = '✗ Failed';
+				setTimeout(() => { btnFork.textContent = 'Fork'; btnFork.disabled = false; }, 2000);
+			}
+		} catch {
+			btnFork.textContent = '✗ Error';
+			setTimeout(() => { btnFork.textContent = 'Fork'; btnFork.disabled = false; }, 2000);
+		}
+	});
+}
+
+if (seed) {
+	const roUrl = `${location.origin}/?seed=${encodeURIComponent(seed)}`;
+	const rwUrl = token ? `${location.origin}/edit?seed=${encodeURIComponent(seed)}&token=${encodeURIComponent(token)}` : null;
+
+	const sharePanel = document.createElement('div');
+	sharePanel.id = 'share-panel';
+	sharePanel.style.cssText = `
+		position:fixed; bottom:52px; left:20px; z-index:9998;
+		background:var(--panel-dark); border:1px solid var(--light); border-radius:8px;
+		padding:16px; display:none; flex-direction:column; gap:10px;
+		font-family:var(--condensed-font); font-size:13px; color:var(--text-dark); min-width:340px;
+	`;
+
+	function makeShareRow(label, url) {
+		const row = document.createElement('div');
+		row.style.cssText = 'display:flex; flex-direction:column; gap:4px;';
+		const lbl = document.createElement('span');
+		lbl.textContent = label;
+		lbl.style.cssText = 'opacity:.6; font-size:11px; text-transform:uppercase; letter-spacing:.05em;';
+		const controls = document.createElement('div');
+		controls.style.cssText = 'display:flex; gap:6px; align-items:center;';
+		const input = document.createElement('input');
+		input.readOnly = true;
+		input.value = url;
+		input.style.cssText = 'flex:1; padding:4px 6px; border-radius:4px; border:1px solid var(--border-dark); background:#0a0a0e; color:#ccc; font-family:var(--mono-font); font-size:11px;';
+		const btn = document.createElement('button');
+		btn.textContent = 'Copy';
+		btn.addEventListener('click', () => {
+			navigator.clipboard.writeText(url);
+			btn.textContent = '✓';
+			setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+		});
+		controls.append(input, btn);
+		row.append(lbl, controls);
+		return row;
+	}
+
+	sharePanel.appendChild(makeShareRow('View only', roUrl));
+	if (rwUrl) sharePanel.appendChild(makeShareRow('Edit (keep private)', rwUrl));
+	document.body.appendChild(sharePanel);
+
+	const btnShare = document.createElement('button');
+	btnShare.id = 'btn-share';
+	btnShare.textContent = 'Share';
+	toolbar.insertBefore(btnShare, document.getElementById('btn-preview'));
+
+	btnShare.addEventListener('click', () => {
+		sharePanel.style.display = sharePanel.style.display === 'flex' ? 'none' : 'flex';
+	});
+	document.addEventListener('click', e => {
+		if (!sharePanel.contains(e.target) && e.target !== btnShare)
+			sharePanel.style.display = 'none';
+	});
+}
 
 // ── Color panel ───────────────────────────────────────────────────────────────
 
