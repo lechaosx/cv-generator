@@ -5,8 +5,7 @@ import { ensureRef, resolvePhotoRef } from './idb';
 import { PHOTO_REF_PREFIX } from './storage';
 
 export const TOP_ORDER = ['title_before_name', 'name', 'title_after_name', 'position', 'phone', 'email', 'location', 'description', 'interests', 'links', 'theme', 'experience', 'education', 'language', 'photo'];
-export const EXP_ORDER = ['title', 'company', 'start_month', 'start_year', 'end_month', 'end_year', 'description', 'badges'];
-export const EDU_ORDER = ['title', 'institution', 'subinstitution', 'start_month', 'start_year', 'end_month', 'end_year', 'description'];
+export const TIMELINE_ORDER = ['title', 'organization', 'department', 'start_month', 'start_year', 'end_month', 'end_year', 'description', 'badges'];
 
 export interface ColorExportConfig {
 	themeKeys: string[];
@@ -89,8 +88,10 @@ export async function buildExport(store: Store, colorCfg: ColorExportConfig): Pr
 	const head = (arr: unknown[]) => { while (arr?.length && isEntryEmpty(arr[0])) arr.shift(); };
 	head(out.experience); head(out.education);
 	if (Array.isArray(out.interests)) out.interests = out.interests.filter(s => s && String(s).trim());
-	if (Array.isArray(out.experience)) {
-		for (const job of out.experience) job.badges = (job.badges ?? []).filter((s: unknown) => s && String(s).trim());
+	for (const section of [out.experience, out.education]) {
+		if (Array.isArray(section)) {
+			for (const e of section) e.badges = (e.badges ?? []).filter((s: unknown) => s && String(s).trim());
+		}
 	}
 
 	if (Array.isArray(out.links)) {
@@ -122,8 +123,8 @@ export async function buildExport(store: Store, colorCfg: ColorExportConfig): Pr
 	if (Object.keys(theme).length) out.theme = theme;
 	else delete (out as Record<string, unknown>)['theme'];
 
-	if (Array.isArray(out.experience)) out.experience = out.experience.map(e => stripEmpty(reorderKeys(e as unknown as Record<string, unknown>, EXP_ORDER))) as unknown as typeof out.experience;
-	if (Array.isArray(out.education))  out.education  = out.education.map(e => stripEmpty(reorderKeys(e as unknown as Record<string, unknown>, EDU_ORDER))) as unknown as typeof out.education;
+	if (Array.isArray(out.experience)) out.experience = out.experience.map(e => stripEmpty(reorderKeys(e as unknown as Record<string, unknown>, TIMELINE_ORDER))) as unknown as typeof out.experience;
+	if (Array.isArray(out.education))  out.education  = out.education.map(e => stripEmpty(reorderKeys(e as unknown as Record<string, unknown>, TIMELINE_ORDER))) as unknown as typeof out.education;
 	return stripEmpty(reorderKeys(out as Record<string, unknown>, TOP_ORDER)) as Record<string, unknown>;
 }
 
@@ -164,10 +165,10 @@ export function openYamlModal(store: Store, colorCfg: ColorExportConfig): void {
 		yamlModal.querySelector('#modal-reset')!.addEventListener('click', () => {
 			const defaultData = structuredClone(window.CV_DATA ?? {}) as Record<string, unknown>;
 			if (Array.isArray(defaultData['experience'])) {
-				defaultData['experience'] = (defaultData['experience'] as Record<string, unknown>[]).map(e => stripEmpty(reorderKeys(e, EXP_ORDER)));
+				defaultData['experience'] = (defaultData['experience'] as Record<string, unknown>[]).map(e => stripEmpty(reorderKeys(e, TIMELINE_ORDER)));
 			}
 			if (Array.isArray(defaultData['education'])) {
-				defaultData['education'] = (defaultData['education'] as Record<string, unknown>[]).map(e => stripEmpty(reorderKeys(e, EDU_ORDER)));
+				defaultData['education'] = (defaultData['education'] as Record<string, unknown>[]).map(e => stripEmpty(reorderKeys(e, TIMELINE_ORDER)));
 			}
 			textarea.value = toYaml(stripEmpty(reorderKeys(defaultData, TOP_ORDER)) as Record<string, unknown>);
 		});

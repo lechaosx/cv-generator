@@ -26,7 +26,7 @@ Dependencies point strictly upward. No layer imports from a layer above it.
 ── Layer 2: Pure UI components ───────────────────────────
    text-edit    setupEditable(el, value, ph, onCommit)
    lists        makeStringList(el, get, onCommit, onPersist, ph)
-   timeline     initTimelines(store) / renderExperienceTimeline(store)
+   timeline     initTimelines(store) / renderExperienceTimeline(store) / renderEducationTimeline(store)
    links        setupConnectEdit(store)
 
 ── Layer 3: Infrastructure ───────────────────────────────
@@ -56,7 +56,7 @@ Dependencies point strictly upward. No layer imports from a layer above it.
 `Store` (in `store.ts`) is the only thing that holds mutable state. Nothing else mutates state directly. All state is read via `store.state` (typed as `Readonly<CVState>`).
 
 ```typescript
-// Correct — mutation goes through the store
+// Correct
 store.commit(s => { s.interests = newInterests; });
 
 // Wrong — bypassing the owner
@@ -65,15 +65,13 @@ store.commit(s => { s.interests = newInterests; });
 
 ### Pure functions
 
-Functions in layers 0–2 take their inputs as parameters and return outputs. They do not read or write any global state.
+Functions in layers 0–2 take inputs as parameters and return outputs. They do not read or write any global state.
 
-```typescript
-// normalize.ts — pure
-export function normalizeInterests(interests: string[]): string[] { ... }
+`normalize.ts` functions are pure transformations. `normalizeTimeline` also coerces YAML entries (resolves `company ?? institution ?? organization` → `organization`) — normalization is the boundary where raw external data is cleaned up.
 
-// text-edit.ts — pure UI component
-export function setupEditable(el, value: unknown, ph, onCommit: OnCommit): void { ... }
-```
+### Empty string, not null/undefined
+
+Text fields use `''` as the null object. `null`/`undefined` are handled at the boundary (normalization) and do not appear in the internal data model. This avoids optional-field handling throughout the codebase.
 
 ### Explicit passing — no implicit global reads
 
@@ -85,7 +83,7 @@ If a function needs state or a commit callback, it receives them as parameters. 
 
 ### No import cycles
 
-The dependency graph is a strict DAG. The three latent cycles that existed previously (render↔history, render↔yaml, colors↔history) were caused by `history.ts` doing orchestration work. They are gone: `history.ts` only manages the stack and never calls render.
+The dependency graph is a strict DAG. The three latent cycles that previously existed (render↔history, render↔yaml, colors↔history) were caused by `history.ts` doing orchestration work. They are gone: `history.ts` only manages the stack and never calls render.
 
 ---
 
@@ -109,6 +107,10 @@ User types in a contentEditable field
 - `undefined` — full `render(store)` call
 - `string[]` — only the named section renderers run (registered via `store.registerSection`)
 - `null` — no render (persist + normalize only; used for within-container edits)
+
+### Startup
+
+The `Store` constructor calls `normalizeAll` on the initial state before the first render. This ensures ghost draft entries exist and all fields are in canonical form without requiring a first user interaction.
 
 ### Undo/redo
 
@@ -165,11 +167,54 @@ Three parallel objects owned by `Store`:
 
 ---
 
+## Timeline entries
+
+Both `experience` and `education` use the shared `TimelineEntry` type:
+
+```typescript
+interface TimelineEntry {
+    title: string;
+    organization: string;  // canonical; old YAML keys company/institution are coerced on load
+    department: string;    // canonical; old YAML key subinstitution is coerced on load
+    start_month: string; start_year: string;
+    end_month: string;   end_year: string;
+    description: string | string[];
+    badges: string[];
+}
+```
+
+Backward compatibility lives only at the two normalization boundaries:
+- **Python** (`normalize_cv` in `app.py`): called by `load_cv`, remaps `company`/`institution` → `organization` and `subinstitution` → `department` before the data reaches the template or `window.CV_DATA`.
+- **TypeScript** (`normalizeTimeline` in `normalize.ts`): same coercion for data coming from localStorage or YAML import.
+
+After normalization, `organization` and `department` are the only field names used anywhere — in the template, editor, and export.
+
+`materializeEntry(store, section, idx, el)` in `timeline.ts` is the single render function for both sections. `section` only selects the right state slice (`s.experience` vs `s.education`); it no longer influences field names or placeholder labels.
+
+The Jinja template uses a `render_timeline` macro for both sections, reading only `entry.organization` and `entry.department`.
+
+---
+
+## HTML semantics
+
+The CV template (`server/templates/cv.html`) is semantic HTML readable without CSS:
+- `<figure>` for photo, `<header>` for name/contact, `<address>` for contact list
+- `<article>` per timeline entry — CSS `display: contents` makes each article transparent to the grid layout while keeping the semantic grouping
+- The two-column `.timeline` grid has two sets of selectors: `article > :first-child` / `article > :last-child` for view mode (template-rendered), and `.timeline-entry:nth-child(2n+1)` / `:nth-child(2n)` for edit mode (JS-created divs)
+- `<time>` for dates, `<ul>/<li>` for badges and interests
+- `<a href="tel:">` / `<a href="mailto:">` links in view mode only — omitted in edit mode to prevent navigation while editing
+- Decorative SVG icons carry `aria-hidden="true"`, injected by `get_icon()` in `app.py`
+- `address { font-style: normal }` resets the browser default italic on `<address>`
+
+### Edit-mode placeholders
+
+Handled entirely by the CSS `[data-placeholder]:empty::before` mechanism. `setupEditable` always clears `innerHTML` and sets `data-placeholder-key`; `updateLabels` resolves that to a translated `data-placeholder` attribute. No server-rendered placeholder elements exist — the legacy `span.placeholder` approach has been removed.
+
+---
+
 ## Adding a new CV section
 
-1. Add fields to `CVState` in `types.ts`
-2. Add a `normalizeX(v: T[]): T[]` pure function in `normalize.ts`
-3. Call it in `normalizeAll()` in `normalize.ts`
-4. Add a `renderX(store: Store): void` function in `render.ts` or a new module
-5. Call it inside `render()` in `render.ts`
-6. Optionally register it as a named section in `index.ts` via `store.registerSection`
+1. Add fields to `CVState` in `types.ts`; use `string` not `string | undefined` for text fields
+2. Add a `normalizeX(v: T[]): T[]` pure function in `normalize.ts`; call it in `normalizeAll()`
+3. Add a `renderX(store: Store): void` function in `render.ts` or a new module; call it in `render()`
+4. Optionally register it as a named section in `index.ts` via `store.registerSection`

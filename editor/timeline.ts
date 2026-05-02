@@ -3,17 +3,16 @@ import { defined } from './assert';
 import { enableDragSort, dragOnlyOutsideText } from './drag-sort';
 import { setupEditable } from './text-edit';
 import { makeStringList } from './lists';
-import type { ExperienceEntry, EducationEntry } from './types';
+import type { TimelineEntry } from './types';
 
-let expTimeline: HTMLElement | null = null;
-let eduTimeline: HTMLElement | null = null;
+const timelines = new Map<'experience' | 'education', HTMLElement>();
 
 function descStr(d: string | string[]): string {
 	return Array.isArray(d) ? d.join(' ') : (d ?? '');
 }
 
-function inTimeline(timeline: HTMLElement | null, e?: FocusEvent): boolean {
-	return !!timeline?.contains(e?.relatedTarget as Node);
+function inTimeline(section: 'experience' | 'education', e?: FocusEvent): boolean {
+	return !!timelines.get(section)?.contains(e?.relatedTarget as Node);
 }
 
 function makeDateRange(
@@ -48,119 +47,82 @@ function makeDateRange(
 	return dates;
 }
 
-function materializeExpEntry(store: Store, idx: number, timelineEl: HTMLElement): void {
-	const entry  = defined(store.state.experience[idx], `experience entry at index ${idx}`);
-	const isReal = !!(entry.company?.trim() && entry.title?.trim());
+function materializeEntry(
+	store: Store,
+	section: 'experience' | 'education',
+	idx: number,
+	timelineEl: HTMLElement,
+): void {
+	const entry  = defined(store.state[section][idx], `${section}[${idx}]`);
+	const isReal = !!(entry.organization.trim() && entry.title.trim());
 
-	const expCommit = (mutate: (e: ExperienceEntry) => void, e?: FocusEvent) =>
-		store.commit(s => mutate(s.experience[idx]!), inTimeline(expTimeline, e) ? null : ['experience']);
+	const commit = (mutate: (e: TimelineEntry) => void, e?: FocusEvent) =>
+		store.commit(s => mutate(s[section][idx]!), inTimeline(section, e) ? null : [section]);
 
 	const left = document.createElement('div');
 	left.classList.add('timeline-entry');
 	if (isReal) { left.draggable = true; left.dataset['dragIdx'] = String(idx); dragOnlyOutsideText(left); }
 
-	const company = document.createElement('strong');
-	setupEditable(company, entry.company, 'company', (v, e) => expCommit(ent => { ent.company = v as string; }, e));
+	const orgEl = document.createElement('strong');
+	setupEditable(orgEl, entry.organization, 'organization', (v, e) =>
+		commit(ent => { ent.organization = v as string; }, e));
+
+	const subSpan = document.createElement('span');
+	setupEditable(subSpan, entry.department, 'department', (v, e) =>
+		commit(ent => { ent.department = v as string; }, e));
+	const subDiv = document.createElement('div');
+	subDiv.append(subSpan);
 
 	const badgeList = document.createElement('div');
 	badgeList.className = 'badge-list';
 	makeStringList(
 		badgeList,
-		() => store.state.experience[idx]?.badges ?? [],
-		v => store.commit(s => { if (s.experience[idx]) s.experience[idx]!.badges = v; }, ['experience']),
-		v => store.commit(s => { if (s.experience[idx]) s.experience[idx]!.badges = v; }, null),
+		() => store.state[section][idx]?.badges ?? [],
+		v => store.commit(s => { if (s[section][idx]) s[section][idx]!.badges = v; }, [section]),
+		v => store.commit(s => { if (s[section][idx]) s[section][idx]!.badges = v; }, null),
 		'badge',
 	);
 
-	left.append(company, makeDateRange(
+	left.append(orgEl, subDiv, makeDateRange(
 		entry.start_month, entry.start_year, entry.end_month, entry.end_year,
-		(field, v, e) => expCommit(ent => { (ent as unknown as Record<string, unknown>)[field] = v; }, e),
+		(field, v, e) => commit(ent => { (ent as unknown as Record<string, unknown>)[field] = v; }, e),
 	), badgeList);
 
 	const right = document.createElement('div');
 	right.classList.add('timeline-entry');
 	if (isReal) { right.draggable = true; right.dataset['dragIdx'] = String(idx); dragOnlyOutsideText(right); }
 
-	const title = document.createElement('strong');
-	setupEditable(title, entry.title, 'title', (v, e) => expCommit(ent => { ent.title = v as string; }, e));
+	const titleEl = document.createElement('strong');
+	setupEditable(titleEl, entry.title, 'title', (v, e) =>
+		commit(ent => { ent.title = v as string; }, e));
 
-	const desc = document.createElement('p');
-	setupEditable(desc, descStr(entry.description), 'description', (v, e) =>
-		expCommit(ent => { ent.description = v ? [v as string] : []; }, e));
+	const descEl = document.createElement('p');
+	setupEditable(descEl, descStr(entry.description), 'description', (v, e) =>
+		commit(ent => { ent.description = v ? [v as string] : []; }, e));
 
-	right.append(title, desc);
+	right.append(titleEl, descEl);
 	timelineEl.append(left, right);
 }
 
-function materializeEduEntry(store: Store, idx: number, timelineEl: HTMLElement): void {
-	const entry  = defined(store.state.education[idx], `education entry at index ${idx}`);
-	const isReal = !!(entry.institution?.trim() && entry.title?.trim());
-
-	const eduCommit = (mutate: (e: EducationEntry) => void, e?: FocusEvent) =>
-		store.commit(s => mutate(s.education[idx]!), inTimeline(eduTimeline, e) ? null : ['education']);
-
-	const left = document.createElement('div');
-	left.classList.add('timeline-entry');
-	if (isReal) { left.draggable = true; left.dataset['dragIdx'] = String(idx); dragOnlyOutsideText(left); }
-
-	const institution = document.createElement('strong');
-	setupEditable(institution, entry.institution, 'institution', (v, e) =>
-		eduCommit(ent => { ent.institution = v as string; }, e));
-
-	const eduSubSpan = document.createElement('span');
-	setupEditable(eduSubSpan, entry.subinstitution, 'faculty', (v, e) =>
-		eduCommit(ent => { ent.subinstitution = v as string; }, e));
-
-	const eduSub = document.createElement('div');
-	eduSub.append(eduSubSpan);
-	left.append(institution, eduSub, makeDateRange(
-		entry.start_month, entry.start_year, entry.end_month, entry.end_year,
-		(field, v, e) => eduCommit(ent => { (ent as unknown as Record<string, unknown>)[field] = v; }, e),
-	));
-
-	const right = document.createElement('div');
-	right.classList.add('timeline-entry');
-	if (isReal) { right.draggable = true; right.dataset['dragIdx'] = String(idx); dragOnlyOutsideText(right); }
-
-	const title = document.createElement('strong');
-	setupEditable(title, entry.title, 'title', (v, e) =>
-		eduCommit(ent => { ent.title = v as string; }, e));
-
-	const desc = document.createElement('p');
-	setupEditable(desc, descStr(entry.description), 'description', (v, e) =>
-		eduCommit(ent => { ent.description = v ? [v as string] : []; }, e));
-
-	right.append(title, desc);
-	timelineEl.append(left, right);
+function renderSection(store: Store, section: 'experience' | 'education'): void {
+	const el = timelines.get(section);
+	if (!el) return;
+	el.innerHTML = '';
+	store.state[section].forEach((_, idx) => materializeEntry(store, section, idx, el));
 }
 
-export function renderExperienceTimeline(store: Store): void {
-	if (!expTimeline) return;
-	expTimeline.innerHTML = '';
-	store.state.experience.forEach((_, idx) => materializeExpEntry(store, idx, expTimeline!));
-}
-
-export function renderEducationTimeline(store: Store): void {
-	if (!eduTimeline) return;
-	eduTimeline.innerHTML = '';
-	store.state.education.forEach((_, idx) => materializeEduEntry(store, idx, eduTimeline!));
-}
+export function renderExperienceTimeline(store: Store): void { renderSection(store, 'experience'); }
+export function renderEducationTimeline(store: Store): void  { renderSection(store, 'education'); }
 
 export function initTimelines(store: Store): void {
-	const timelines = document.querySelectorAll<HTMLElement>('.timeline');
-	expTimeline = timelines[0] ?? null;
-	eduTimeline = timelines[1] ?? null;
-
-	if (expTimeline) {
-		enableDragSort(expTimeline, '.timeline-entry',
-			() => store.state.experience,
-			reordered => store.commit(s => { s.experience = reordered; }, ['experience']),
+	const els = document.querySelectorAll<HTMLElement>('.timeline');
+	(['experience', 'education'] as const).forEach((section, i) => {
+		const el = els[i];
+		if (!el) return;
+		timelines.set(section, el);
+		enableDragSort(el, '.timeline-entry',
+			() => store.state[section],
+			reordered => store.commit(s => { s[section] = reordered; }, [section]),
 		);
-	}
-	if (eduTimeline) {
-		enableDragSort(eduTimeline, '.timeline-entry',
-			() => store.state.education,
-			reordered => store.commit(s => { s.education = reordered; }, ['education']),
-		);
-	}
+	});
 }

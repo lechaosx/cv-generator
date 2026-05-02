@@ -6,6 +6,30 @@
 {% set lang = (data.get('language', 'en') if data else 'en') %}
 {% if lang not in LABELS %}{% set lang = 'en' %}{% endif %}
 {% set labels = LABELS[lang] %}
+
+{% macro render_timeline(entries) %}
+{% for entry in entries %}
+<article>
+	<div>
+		<strong>{{ entry.organization }}</strong>
+		{% if entry.department %}<div>{{ entry.department }}</div>{% endif %}
+		{% if entry.start_year or entry.end_year %}
+		<p class="cv-dates">{% if entry.start_year %}<time>{% if entry.start_month %}{{ entry.start_month }}/{% endif %}{{ entry.start_year }}</time>{% if entry.end_year %} – <time>{% if entry.end_month %}{{ entry.end_month }}/{% endif %}{{ entry.end_year }}</time>{% else %} – {{ labels.present }}{% endif %}{% elif entry.end_year %}<time>{% if entry.end_month %}{{ entry.end_month }}/{% endif %}{{ entry.end_year }}</time>{% endif %}</p>
+		{% endif %}
+		{% if entry.badges %}
+		<ul class="badge-list">
+			{% for badge in entry.badges %}<li>{{ badge }}</li>{% endfor %}
+		</ul>
+		{% endif %}
+	</div>
+	<div>
+		<strong>{{ entry.title }}</strong>
+		<p>{{ entry.description | join(' ') if entry.description is not string else entry.description }}</p>
+	</div>
+</article>
+{% endfor %}
+{% endmacro %}
+
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 <head>
@@ -88,47 +112,11 @@
 		<div>
 			<section>
 				<h2 class="section-header"{% if edit_mode %} data-label="work_experience"{% endif %}>{{ labels.work_experience }}</h2>
-				<div class="timeline">
-					{% for job in data.experience | default([]) %}
-					<article>
-						<div>
-							<strong>{{ job.company }}</strong>
-							{% if job.start_year or job.end_year %}
-							<p class="cv-dates">{% if job.start_year %}<time>{% if job.start_month %}{{ job.start_month }}/{% endif %}{{ job.start_year }}</time>{% if job.end_year %} – <time>{% if job.end_month %}{{ job.end_month }}/{% endif %}{{ job.end_year }}</time>{% else %} – {{ labels.present }}{% endif %}{% elif job.end_year %}<time>{% if job.end_month %}{{ job.end_month }}/{% endif %}{{ job.end_year }}</time>{% endif %}</p>
-							{% endif %}
-							{% if job.badges %}
-							<ul class="badge-list">
-								{% for badge in job.badges %}<li>{{ badge }}</li>{% endfor %}
-							</ul>
-							{% endif %}
-						</div>
-						<div>
-							<strong>{{ job.title }}</strong>
-							<p>{{ job.description | join(' ') if job.description is not string else job.description }}</p>
-						</div>
-					</article>
-					{% endfor %}
-				</div>
+				<div class="timeline">{{ render_timeline(data.experience | default([])) }}</div>
 			</section>
 			<section>
 				<h2 class="section-header"{% if edit_mode %} data-label="education"{% endif %}>{{ labels.education }}</h2>
-				<div class="timeline">
-					{% for edu in data.education | default([]) %}
-					<article>
-						<div>
-							<strong>{{ edu.institution }}</strong>
-							{% if edu.subinstitution %}<div>{{ edu.subinstitution }}</div>{% endif %}
-							{% if edu.start_year or edu.end_year %}
-							<p class="cv-dates">{% if edu.start_year %}<time>{% if edu.start_month %}{{ edu.start_month }}/{% endif %}{{ edu.start_year }}</time>{% if edu.end_year %} – <time>{% if edu.end_month %}{{ edu.end_month }}/{% endif %}{{ edu.end_year }}</time>{% else %} – {{ labels.present }}{% endif %}{% elif edu.end_year %}<time>{% if edu.end_month %}{{ edu.end_month }}/{% endif %}{{ edu.end_year }}</time>{% endif %}</p>
-							{% endif %}
-						</div>
-						<div>
-							<strong>{{ edu.title }}</strong>
-							<p>{{ edu.description | join(' ') if edu.description is not string else edu.description }}</p>
-						</div>
-					</article>
-					{% endfor %}
-				</div>
+				<div class="timeline">{{ render_timeline(data.education | default([])) }}</div>
 			</section>
 		</div>
 	</main>

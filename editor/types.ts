@@ -1,23 +1,13 @@
-export interface ExperienceEntry {
+export interface TimelineEntry {
 	title: string;
-	company: string;
+	organization: string;
+	department: string;
 	start_month: string;
 	start_year: string;
 	end_month: string;
 	end_year: string;
 	description: string | string[];
 	badges: string[];
-}
-
-export interface EducationEntry {
-	title: string;
-	institution: string;
-	subinstitution: string;
-	start_month: string;
-	start_year: string;
-	end_month: string;
-	end_year: string;
-	description: string | string[];
 }
 
 export interface LinkEntry {
@@ -35,8 +25,8 @@ export interface CVState {
 	interests: string[];
 	links: LinkEntry[] | Record<string, string>;
 	photo: string;
-	experience: ExperienceEntry[];
-	education: EducationEntry[];
+	experience: TimelineEntry[];
+	education: TimelineEntry[];
 	theme: Record<string, string>;
 	language: string;
 	title_before_name: string;

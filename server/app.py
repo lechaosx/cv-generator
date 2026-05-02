@@ -53,15 +53,14 @@ LABELS = {
 		'location':              'Location',
 		'phone':                 'Phone',
 		'email':                 'Email',
-		'company':               'Company',
-		'institution':           'Institution',
+		'organization':          'Organization',
+		'department':            'Department',
 		'title':                 'Title',
 		'description':           'Description',
 		'badge':                 'Badge',
 		'interest':              'Interest',
 		'platform':              'Platform',
 		'url':                   'URL',
-		'faculty':               'Faculty',
 	},
 	'cs': {
 		'about_me':              'O mně',
@@ -75,15 +74,14 @@ LABELS = {
 		'location':              'Lokalita',
 		'phone':                 'Telefon',
 		'email':                 'Email',
-		'company':               'Společnost',
-		'institution':           'Instituce',
+		'organization':          'Organizace',
+		'department':            'Oddělení',
 		'title':                 'Titul',
 		'description':           'Popis',
 		'badge':                 'Štítek',
 		'interest':              'Zájem',
 		'platform':              'Platforma',
 		'url':                   'URL',
-		'faculty':               'Fakulta',
 	},
 }
 
@@ -100,6 +98,15 @@ DOMAINS_CONFIG = os.getenv('DOMAINS_CONFIG')
 DEFAULT_CV     = os.getenv('DEFAULT_CV')
 CACHE_TTL      = 60 * 60 * 24 * 7
 
+def normalize_cv(data):
+	for entry in data.get('experience', []) + data.get('education', []):
+		if 'organization' not in entry:
+			entry['organization'] = entry.pop('company', None) or entry.pop('institution', None) or ''
+		if 'department' not in entry:
+			entry['department'] = entry.pop('subinstitution', None) or ''
+	return data
+
+
 def load_cv(path_or_url):
 	if path_or_url.startswith(('http://', 'https://')):
 		data = yaml.safe_load(requests.get(path_or_url).content)
@@ -113,7 +120,7 @@ def load_cv(path_or_url):
 			mime, _ = mimetypes.guess_type(photo_path)
 			with open(photo_path, 'rb') as f:
 				data['photo'] = f"data:{mime};base64,{base64.b64encode(f.read()).decode()}"
-	return data
+	return normalize_cv(data)
 
 
 def load_domains():
