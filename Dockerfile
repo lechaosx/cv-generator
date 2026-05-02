@@ -14,8 +14,17 @@ ENV PYTHONUNBUFFERED=1
 
 FROM base AS dev
 
-CMD uv run flask --app src/app.py --debug run --host=0.0.0.0
+CMD uv run flask --app server/app.py --debug run --host=0.0.0.0
+
+FROM node:22-alpine AS ts-build
+WORKDIR /app
+COPY package.json ./
+RUN npm install
+COPY editor ./editor
+RUN npm run build
 
 FROM base AS prod
 
-CMD uv run gunicorn --bind=0.0.0.0:5000 src.app:app
+COPY --from=ts-build /app/server/static/edit.js ./server/static/edit.js
+
+CMD uv run gunicorn --bind=0.0.0.0:5000 server.app:app

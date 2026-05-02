@@ -1,0 +1,12 @@
+{
+  "name": "cv-generator-editor",
+  "private": true,
+  "scripts": {
+    "build": "esbuild editor/index.ts --bundle --outfile=server/static/edit.js --platform=browser --target=es2022",
+    "serve": "esbuild editor/index.ts --bundle --serve=0.0.0.0:9001 --outfile=/tmp/edit.js --platform=browser --target=es2022"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.3"
+  }
+}

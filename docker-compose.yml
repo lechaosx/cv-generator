@@ -7,10 +7,19 @@ services:
       DOMAINS_CONFIG: ${DOMAINS_CONFIG:-/config/domains.json}
       DEFAULT_CV: /data/default.yaml
     volumes:
-      - ./src:/app/src
+      - ./server:/app/server
       - ./config/domains.json:/config/domains.json:ro
       - ${DEFAULT_CV:-./data/cv.yaml}:/data/default.yaml:ro
       - diskcache:/data
+
+  ts-builder:
+    image: node:22-alpine
+    working_dir: /app
+    stdin_open: true
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run serve"
 
   caddy:
     image: caddy:alpine
@@ -20,6 +29,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile
     depends_on:
       - backend
+      - ts-builder
 
 volumes:
   diskcache:

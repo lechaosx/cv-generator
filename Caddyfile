@@ -1,3 +1,7 @@
 :80 {
+	handle /static/edit.js {
+		rewrite * /edit.js
+		reverse_proxy ts-builder:9001
+	}
 	reverse_proxy backend:5000
 }
