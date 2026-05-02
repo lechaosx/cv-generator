@@ -51,6 +51,10 @@
 	box-sizing: border-box;
 }
 
+address {
+	font-style: normal;
+}
+
 body {
 	background-color: var(--background);
 	font-family: var(--normal-font);
@@ -116,6 +120,10 @@ main {
 		align-items: center;
 		gap: 8px;
 		margin-right: 0;
+	}
+
+	a {
+		display: contents;
 	}
 
 	span {
@@ -193,6 +201,11 @@ h1 {
 	flex-direction: column;
 	gap: 0.5rem;
 
+	ul {
+		list-style: none;
+		display: contents;
+	}
+
 	a {
 		display: flex;
 		align-items: center;
@@ -210,16 +223,16 @@ h1 {
 	display: grid;
 	grid-template-columns: 1fr 2fr;
 
-	> * {
-		padding-bottom: 20px;
+	/* view mode: one article per entry, transparent to the grid */
+	> article {
+		display: contents;
 	}
 
-	> :nth-child(2n) {
-		padding-left: 20px;
-	}
-
-	> :nth-child(2n + 1) {
+	/* left column — view mode (article > first div) and edit mode (.timeline-entry odd) */
+	> article > :first-child,
+	> .timeline-entry:nth-child(2n + 1) {
 		padding-right: 20px;
+		padding-bottom: 20px;
 		border-right: 1px solid var(--timeline);
 		text-align: right;
 		position: relative;
@@ -241,6 +254,13 @@ h1 {
 		}
 	}
 
+	/* right column */
+	> article > :last-child,
+	> .timeline-entry:nth-child(2n) {
+		padding-left: 20px;
+		padding-bottom: 20px;
+	}
+
 	.badge-list {
 		margin-top: 8px;
 		justify-content: end;
@@ -251,6 +271,7 @@ h1 {
 	gap: 4px;
 	display: flex;
 	flex-wrap: wrap;
+	list-style: none;
 }
 
 .badge-list > * {
@@ -297,12 +318,7 @@ h1 {
 	color: #e07070;
 }
 
-.placeholder {
-	opacity: 0.35;
-	font-style: italic;
-}
-
-/* Date range display logic */
+/* Date range display logic — only active in edit mode where JS renders spans */
 .start-part:has(.start-year:empty) { display: none; }
 .start-part:has(.start-month:empty) .start-month,
 .start-part:has(.start-month:empty) .sm-sep { display: none; }

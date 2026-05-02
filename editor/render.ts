@@ -45,11 +45,9 @@ function renderInterests(store: Store): void {
 	if (!section) return;
 	let el = section.querySelector<HTMLElement>('.badge-list');
 	if (!el) {
-		const p = section.querySelector('p');
-		if (!p) return;
-		el = document.createElement('div');
+		el = document.createElement('ul');
 		el.className = 'badge-list';
-		p.replaceWith(el);
+		section.appendChild(el);
 	}
 	makeStringList(
 		el,

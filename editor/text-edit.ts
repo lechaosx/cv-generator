@@ -48,10 +48,9 @@ export function setupEditable(
 	el.classList.add('cv-field');
 	el.dataset['placeholderKey'] = placeholderKey;
 
-	if (value != null) {
-		if (Array.isArray(value)) el.textContent = (value as string[]).join(' ');
-		else { el.innerHTML = ''; el.textContent = String(value); }
-	}
+	el.innerHTML = '';
+	const text = Array.isArray(value) ? (value as string[]).join(' ') : (value != null ? String(value) : '');
+	if (text.trim()) el.textContent = text;
 
 	if (!immediate) activateOnInteract(el);
 

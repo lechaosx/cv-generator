@@ -33,7 +33,10 @@ def get_icon(name):
 				app.logger.warning("Icon '%s' not found (status %s)", name, response.status_code)
 		except requests.exceptions.RequestException:
 			app.logger.exception("Failed to fetch icon '%s'", name)
-	return icon_cache.get(name, "")
+	svg = icon_cache.get(name, "")
+	if svg:
+		svg = svg.replace('<svg', '<svg aria-hidden="true"', 1)
+	return svg
 
 app.jinja_env.globals['get_icon'] = get_icon
 
@@ -50,14 +53,8 @@ LABELS = {
 		'location':              'Location',
 		'phone':                 'Phone',
 		'email':                 'Email',
-		'about_placeholder':     'A short bio will appear here.',
-		'interests_placeholder': 'Interests will appear here.',
 		'company':               'Company',
-		'job_title':             'Job Title',
-		'experience_placeholder':'Experience details will appear here.',
 		'institution':           'Institution',
-		'degree_title':          'Degree Title',
-		'education_placeholder': 'Education details will appear here.',
 		'title':                 'Title',
 		'description':           'Description',
 		'badge':                 'Badge',
@@ -78,14 +75,8 @@ LABELS = {
 		'location':              'Lokalita',
 		'phone':                 'Telefon',
 		'email':                 'Email',
-		'about_placeholder':     'Krátký popis se zobrazí zde.',
-		'interests_placeholder': 'Zájmy se zobrazí zde.',
 		'company':               'Společnost',
-		'job_title':             'Pozice',
-		'experience_placeholder':'Detaily pracovních zkušeností se zobrazí zde.',
 		'institution':           'Instituce',
-		'degree_title':          'Titul',
-		'education_placeholder': 'Detaily vzdělání se zobrazí zde.',
 		'title':                 'Titul',
 		'description':           'Popis',
 		'badge':                 'Štítek',

@@ -25,53 +25,53 @@
 </head>
 <body>
 	<main>
-		<div class="photo">
+		<figure class="photo">
 			{% if data.photo %}
-			<img src="{{ data.photo }}" alt="Profile" width="400">
+			<img src="{{ data.photo }}" alt="{{ data.name or '' }}" width="400">
 			{% else %}
-			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true">
 				<circle cx="50" cy="50" r="50" fill="var(--white)"/>
 				<circle cx="50" cy="38" r="18" fill="var(--light)"/>
 				<ellipse cx="50" cy="90" rx="30" ry="22" fill="var(--light)"/>
 			</svg>
 			{% endif %}
-		</div>
-		<div class="main-info">
+		</figure>
+		<header class="main-info">
 			<div>
-				<div class="title">{{ data.title_before_name }}</div>
-				<h1>{% if data.name %}{{ data.name }}{% elif edit_mode %}<span class="placeholder" data-label="full_name">{{ labels.full_name }}</span>{% endif %}</h1>
-				<div class="title">{{ data.title_after_name }}</div>
-				<div class="position">{% if data.position %}{{ data.position }}{% elif edit_mode %}<span class="placeholder" data-label="job_position">{{ labels.job_position }}</span>{% endif %}</div>
+				<p class="title">{{ data.title_before_name }}</p>
+				<h1>{{ data.name }}</h1>
+				<p class="title">{{ data.title_after_name }}</p>
+				<p class="position">{{ data.position }}</p>
 			</div>
-			<div class="contact-list">
-				<div>{{ get_icon('lucide/map-pin') | safe }}<span>{% if data.location %}{{ data.location }}{% elif edit_mode %}<span class="placeholder" data-label="location">{{ labels.location }}</span>{% endif %}</span></div>
-				<div>{{ get_icon('lucide/phone') | safe }}<span>{% if data.phone %}{{ data.phone }}{% elif edit_mode %}<span class="placeholder" data-label="phone">{{ labels.phone }}</span>{% endif %}</span></div>
-				<div>{{ get_icon('lucide/mail') | safe }}<span>{% if data.email %}{{ data.email }}{% elif edit_mode %}<span class="placeholder" data-label="email">{{ labels.email }}</span>{% endif %}</span></div>
-			</div>
-		</div>
+			<address class="contact-list">
+				<div>{{ get_icon('lucide/map-pin') | safe }}<span>{{ data.location }}</span></div>
+				<div>{{ get_icon('lucide/phone') | safe }}{% if not edit_mode and data.phone %}<a href="tel:{{ data.phone }}"><span>{{ data.phone }}</span></a>{% else %}<span>{{ data.phone }}</span>{% endif %}</div>
+				<div>{{ get_icon('lucide/mail') | safe }}{% if not edit_mode and data.email %}<a href="mailto:{{ data.email }}"><span>{{ data.email }}</span></a>{% else %}<span>{{ data.email }}</span>{% endif %}</div>
+			</address>
+		</header>
 		<div class="additional-info">
 			<section>
 				<h2 class="section-header"{% if edit_mode %} data-label="about_me"{% endif %}>{{ labels.about_me }}</h2>
-				<p>{% if data.description %}{{ data.description }}{% elif edit_mode %}<span class="placeholder" data-label="about_placeholder">{{ labels.about_placeholder }}</span>{% endif %}</p>
+				<p>{{ data.description | join(' ') if data.description is not string else data.description }}</p>
 			</section>
 			<section>
 				<h2 class="section-header"{% if edit_mode %} data-label="interests"{% endif %}>{{ labels.interests }}</h2>
 				{% if data.interests %}
-				<div class="badge-list">
+				<ul class="badge-list">
 					{% for interest in data.interests %}
-					<span>{{ interest }}</span>
+					<li>{{ interest }}</li>
 					{% endfor %}
-				</div>
-				{% elif edit_mode %}
-				<p><span class="placeholder" data-label="interests_placeholder">{{ labels.interests_placeholder }}</span></p>
+				</ul>
 				{% endif %}
 			</section>
 			{% if data.links %}
 			<section class="connect">
 				<h2 class="section-header"{% if edit_mode %} data-label="connect"{% endif %}>{{ labels.connect }}</h2>
-				{% for name, url in data.links.items() %}
-				<a href="https://{{ url }}">{{ get_icon('simple-icons/' + name) | safe }}{{ url }}</a>
-				{% endfor %}
+				<ul>
+					{% for name, url in data.links.items() %}
+					<li><a href="{{ url if '://' in url else 'https://' + url }}">{{ get_icon('simple-icons/' + name) | safe }}<span>{{ url }}</span></a></li>
+					{% endfor %}
+				</ul>
 			</section>
 			{% endif %}
 			{% if not edit_mode %}
@@ -90,27 +90,23 @@
 				<h2 class="section-header"{% if edit_mode %} data-label="work_experience"{% endif %}>{{ labels.work_experience }}</h2>
 				<div class="timeline">
 					{% for job in data.experience | default([]) %}
-					<div>
-						<strong>{{ job.company }}</strong>
-						<div class="cv-dates"><span class="start-part"><span class="start-month">{{ job.start_month }}</span><span class="sm-sep">/</span><span class="start-year">{{ job.start_year }}</span><span class="range-sep"> – </span></span><span class="end-part"><span class="end-month">{{ job.end_month }}</span><span class="em-sep">/</span><span class="end-year">{{ job.end_year }}</span></span><span class="present-text"{% if edit_mode %} data-label="present"{% endif %}>{{ labels.present }}</span></div>
-						<div class="badge-list">
-							{% for badge in job.badges %}
-							<span>{{ badge }}</span>
-							{% endfor %}
+					<article>
+						<div>
+							<strong>{{ job.company }}</strong>
+							{% if job.start_year or job.end_year %}
+							<p class="cv-dates">{% if job.start_year %}<time>{% if job.start_month %}{{ job.start_month }}/{% endif %}{{ job.start_year }}</time>{% if job.end_year %} – <time>{% if job.end_month %}{{ job.end_month }}/{% endif %}{{ job.end_year }}</time>{% else %} – {{ labels.present }}{% endif %}{% elif job.end_year %}<time>{% if job.end_month %}{{ job.end_month }}/{% endif %}{{ job.end_year }}</time>{% endif %}</p>
+							{% endif %}
+							{% if job.badges %}
+							<ul class="badge-list">
+								{% for badge in job.badges %}<li>{{ badge }}</li>{% endfor %}
+							</ul>
+							{% endif %}
 						</div>
-					</div>
-					<div>
-						<strong>{{ job.title }}</strong>
-						<p>{{ job.description | join(' ') }}</p>
-					</div>
-					{% else %}
-					{% if edit_mode %}
-					<div class="placeholder" data-label="company">{{ labels.company }}</div>
-					<div class="placeholder">
-						<strong data-label="job_title">{{ labels.job_title }}</strong>
-						<p data-label="experience_placeholder">{{ labels.experience_placeholder }}</p>
-					</div>
-					{% endif %}
+						<div>
+							<strong>{{ job.title }}</strong>
+							<p>{{ job.description | join(' ') if job.description is not string else job.description }}</p>
+						</div>
+					</article>
 					{% endfor %}
 				</div>
 			</section>
@@ -118,23 +114,19 @@
 				<h2 class="section-header"{% if edit_mode %} data-label="education"{% endif %}>{{ labels.education }}</h2>
 				<div class="timeline">
 					{% for edu in data.education | default([]) %}
-					<div>
-						<strong>{{ edu.institution }}</strong>
-						<div>{{ edu.subinstitution }}</div>
-						<div class="cv-dates"><span class="start-part"><span class="start-month">{{ edu.start_month | default('') }}</span><span class="sm-sep">/</span><span class="start-year">{{ edu.start_year | default('') }}</span><span class="range-sep"> – </span></span><span class="end-part"><span class="end-month">{{ edu.end_month | default('') }}</span><span class="em-sep">/</span><span class="end-year">{{ edu.end_year }}</span></span><span class="present-text"{% if edit_mode %} data-label="present"{% endif %}>{{ labels.present }}</span></div>
-					</div>
-					<div>
-						<strong>{{ edu.title }}</strong>
-						<p>{{ edu.description | join(' ') }}</p>
-					</div>
-					{% else %}
-					{% if edit_mode %}
-					<div class="placeholder" data-label="institution">{{ labels.institution }}</div>
-					<div class="placeholder">
-						<strong data-label="degree_title">{{ labels.degree_title }}</strong>
-						<p data-label="education_placeholder">{{ labels.education_placeholder }}</p>
-					</div>
-					{% endif %}
+					<article>
+						<div>
+							<strong>{{ edu.institution }}</strong>
+							{% if edu.subinstitution %}<div>{{ edu.subinstitution }}</div>{% endif %}
+							{% if edu.start_year or edu.end_year %}
+							<p class="cv-dates">{% if edu.start_year %}<time>{% if edu.start_month %}{{ edu.start_month }}/{% endif %}{{ edu.start_year }}</time>{% if edu.end_year %} – <time>{% if edu.end_month %}{{ edu.end_month }}/{% endif %}{{ edu.end_year }}</time>{% else %} – {{ labels.present }}{% endif %}{% elif edu.end_year %}<time>{% if edu.end_month %}{{ edu.end_month }}/{% endif %}{{ edu.end_year }}</time>{% endif %}</p>
+							{% endif %}
+						</div>
+						<div>
+							<strong>{{ edu.title }}</strong>
+							<p>{{ edu.description | join(' ') if edu.description is not string else edu.description }}</p>
+						</div>
+					</article>
 					{% endfor %}
 				</div>
 			</section>

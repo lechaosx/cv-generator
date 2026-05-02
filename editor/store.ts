@@ -20,7 +20,7 @@ export class Store {
 	private _observers: ((store: Store) => void)[] = [];
 
 	constructor(state: CVState) {
-		this._state     = state;
+		this._state     = normalizeAll(state);
 		this._lastSaved = this._snapshot();
 	}
 
