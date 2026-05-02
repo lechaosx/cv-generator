@@ -36,7 +36,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>{{ data.name or 'CV' }}</title>
-	<link rel="icon" href="{{ data.photo if data.photo and not data.photo.startswith('data:') else '/static/placeholder.svg' }}">
+	{% if data.photo and not data.photo.startswith('data:') %}<link rel="icon" href="{{ data.photo }}">{% endif %}
 	<link rel="stylesheet" href="/static/style.css">
 	{% if data.theme %}
 	<style>

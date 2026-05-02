@@ -26,7 +26,6 @@ RUN npm run build && npm run build:css
 
 FROM base AS prod
 
-COPY --from=ts-build /app/server/static/edit.js   ./server/static/edit.js
-COPY --from=ts-build /app/server/static/style.css ./server/static/style.css
+COPY --from=ts-build /app/server/static/ ./server/static/
 
 CMD uv run gunicorn --bind=0.0.0.0:5000 server.app:app

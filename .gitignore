@@ -6,4 +6,4 @@
 
 /node_modules/
 /server/static/*.js
-/server/static/style.css
+/server/static/*.css

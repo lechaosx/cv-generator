@@ -1,10 +1,6 @@
 :80 {
-	handle /static/edit.js {
-		rewrite * /edit.js
-		reverse_proxy ts-builder:9001
-	}
-	handle /static/style.css {
-		rewrite * /style.css
+	handle /static/* {
+		uri strip_prefix /static
 		reverse_proxy ts-builder:9001
 	}
 	reverse_proxy backend:5000
