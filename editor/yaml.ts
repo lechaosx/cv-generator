@@ -1,13 +1,19 @@
-import { state, themeColors, colorLinks } from './app-state';
-import { persist } from './history';
+import type { Store } from './store';
+import type { CVState } from './types';
 import { isEntryEmpty } from './normalize';
 import { ensureRef, resolvePhotoRef } from './idb';
 import { PHOTO_REF_PREFIX } from './storage';
-import { themeKeys, BASE_COLORS, DEFAULT_BASE_VALUES, DEFAULT_LINKS } from './colors';
 
 export const TOP_ORDER = ['title_before_name', 'name', 'title_after_name', 'position', 'phone', 'email', 'location', 'description', 'interests', 'links', 'theme', 'experience', 'education', 'language', 'photo'];
 export const EXP_ORDER = ['title', 'company', 'start_month', 'start_year', 'end_month', 'end_year', 'description', 'badges'];
 export const EDU_ORDER = ['title', 'institution', 'subinstitution', 'start_month', 'start_year', 'end_month', 'end_year', 'description'];
+
+export interface ColorExportConfig {
+	themeKeys: string[];
+	BASE_COLORS: string[];
+	DEFAULT_BASE_VALUES: Record<string, string>;
+	DEFAULT_LINKS: Record<string, string>;
+}
 
 export function reorderKeys<T extends Record<string, unknown>>(obj: T, order: string[]): T {
 	const out: Record<string, unknown> = {};
@@ -72,8 +78,8 @@ export function toYaml(obj: Record<string, unknown>, indent = 0): string {
 	return out;
 }
 
-export async function buildExport(): Promise<Record<string, unknown>> {
-	const out = structuredClone(state) as Record<string, unknown> & typeof state;
+export async function buildExport(store: Store, colorCfg: ColorExportConfig): Promise<Record<string, unknown>> {
+	const out = structuredClone(store.state) as Record<string, unknown> & CVState;
 
 	if (out.photo?.startsWith(PHOTO_REF_PREFIX)) {
 		const r = await resolvePhotoRef(out.photo);
@@ -98,6 +104,9 @@ export async function buildExport(): Promise<Record<string, unknown>> {
 		else delete (out as Record<string, unknown>)['links'];
 	}
 
+	const { themeKeys, BASE_COLORS, DEFAULT_BASE_VALUES, DEFAULT_LINKS } = colorCfg;
+	const themeColors = store.themeColors;
+	const colorLinks  = store.colorLinks;
 	const theme: Record<string, string> = {};
 	for (const k of themeKeys) {
 		const v    = themeColors[k]!;
@@ -118,24 +127,19 @@ export async function buildExport(): Promise<Record<string, unknown>> {
 	return stripEmpty(reorderKeys(out as Record<string, unknown>, TOP_ORDER)) as Record<string, unknown>;
 }
 
-let renderCallback: (() => void) | null = null;
-let yamlModal: HTMLElement | null       = null;
+let yamlModal: HTMLElement | null = null;
 
-export function initYaml(callbacks: { onRender: () => void }): void {
-	renderCallback = callbacks.onRender;
-}
-
-export function updateYamlModalIfOpen(): void {
+export function updateYamlModal(store: Store, colorCfg: ColorExportConfig): void {
 	if (!yamlModal) return;
-	buildExport().then(o => {
+	buildExport(store, colorCfg).then(o => {
 		const ta = yamlModal?.querySelector('textarea');
 		if (ta) ta.value = toYaml(o);
 	});
 }
 
-export function openYamlModal(): void {
+export function openYamlModal(store: Store, colorCfg: ColorExportConfig): void {
 	if (yamlModal) return;
-	buildExport().then(yaml => {
+	buildExport(store, colorCfg).then(yaml => {
 		yamlModal = document.createElement('div');
 		yamlModal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;';
 		yamlModal.innerHTML = `
@@ -174,11 +178,12 @@ export function openYamlModal(): void {
 				if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('YAML must be a mapping');
 				const p = parsed as Record<string, unknown>;
 				if (p['photo']) p['photo'] = await ensureRef(p['photo'] as string);
-				for (const k of Object.keys(state)) delete (state as Record<string, unknown>)[k];
-				Object.assign(state, p);
-				persist();
+				store.replace({
+					state:       p as typeof store.state,
+					themeColors: structuredClone(store.themeColors) as Record<string, string>,
+					colorLinks:  structuredClone(store.colorLinks)  as Record<string, string>,
+				});
 				errEl.style.display = 'none';
-				renderCallback?.();
 			} catch (e) {
 				errEl.textContent = String((e as Error).message ?? e);
 				errEl.style.display = 'block';
@@ -198,8 +203,8 @@ export function openYamlModal(): void {
 	});
 }
 
-export async function submitPreview(): Promise<void> {
-	const out   = await buildExport();
+export async function submitPreview(store: Store, colorCfg: ColorExportConfig): Promise<void> {
+	const out   = await buildExport(store, colorCfg);
 	const form  = document.createElement('form');
 	form.method = 'POST'; form.action = '/preview'; form.target = '_blank';
 	const input = document.createElement('input');

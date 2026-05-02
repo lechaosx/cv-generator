@@ -1,13 +1,11 @@
-import { t } from './app-state';
-import { persist } from './history';
 import { enableDragSort } from './drag-sort';
 import { placeCaretAtPoint, activateOnInteract } from './text-edit';
 
 export function makeStringList(
 	container: HTMLElement,
-	get: () => string[],
-	set: (v: string[]) => void,
-	normalize: () => void,
+	get: () => readonly string[],
+	onCommit:  (values: string[]) => void,
+	onPersist: (values: string[]) => void,
 	placeholderKey: string,
 ): void {
 	function render(): void {
@@ -24,7 +22,6 @@ export function makeStringList(
 			el.contentEditable = isNonEmpty ? 'false' : 'true';
 			el.draggable = false;
 			el.dataset['placeholderKey'] = placeholderKey;
-			el.setAttribute('data-placeholder', t(placeholderKey));
 
 			if (isNonEmpty) {
 				const enterEdit = (x?: number, y?: number): void => {
@@ -52,10 +49,11 @@ export function makeStringList(
 				if (isNonEmpty) { el.contentEditable = 'false'; wrap.draggable = true; }
 				const next = [...get()];
 				next[i] = el.textContent?.trim() ?? '';
-				set(next);
-				normalize();
-				persist();
-				if (!container.contains(e.relatedTarget as Node)) render();
+				if (!container.contains(e.relatedTarget as Node)) {
+					onCommit(next);
+				} else {
+					onPersist(next);
+				}
 			});
 			el.addEventListener('keydown', e => {
 				if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
@@ -69,7 +67,7 @@ export function makeStringList(
 
 	if (!container.dataset['dragInited']) {
 		container.dataset['dragInited'] = '1';
-		enableDragSort(container, '.drag-item', get, set, () => { normalize(); persist(); render(); }, 'h');
+		enableDragSort(container, '.drag-item', get, onCommit, 'h');
 	}
 	render();
 }

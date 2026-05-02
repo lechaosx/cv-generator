@@ -1,7 +1,4 @@
-import { state, t } from './app-state';
-import { getPath, setPath } from './paths';
-
-export type AfterBlur = (e?: FocusEvent) => void;
+export type OnCommit = (value: unknown, e?: FocusEvent) => void;
 
 export function placeCaretAtPoint(x: number, y: number): void {
 	let range: Range | undefined;
@@ -37,23 +34,23 @@ export function activateOnInteract(el: HTMLElement): void {
 
 export function setupEditable(
 	el: HTMLElement,
-	path: string,
+	value: unknown,
 	placeholderKey: string,
-	afterBlur: AfterBlur = () => {},
+	onCommit: OnCommit,
 ): void {
-	const v         = getPath(state as Record<string, unknown>, path);
-	const hasValue  = v != null && (Array.isArray(v) ? v.some(x => String(x).trim()) : String(v).trim() !== '');
+	const hasValue = value != null && (Array.isArray(value)
+		? (value as unknown[]).some(x => String(x).trim())
+		: String(value).trim() !== '');
 	const immediate = !hasValue;
 
 	el.contentEditable = immediate ? 'true' : 'false';
 	el.draggable = false;
 	el.classList.add('cv-field');
 	el.dataset['placeholderKey'] = placeholderKey;
-	el.setAttribute('data-placeholder', t(placeholderKey));
 
-	if (v != null) {
-		if (Array.isArray(v)) el.textContent = v.join(' ');
-		else { el.innerHTML = ''; el.textContent = String(v); }
+	if (value != null) {
+		if (Array.isArray(value)) el.textContent = (value as string[]).join(' ');
+		else { el.innerHTML = ''; el.textContent = String(value); }
 	}
 
 	if (!immediate) activateOnInteract(el);
@@ -61,11 +58,9 @@ export function setupEditable(
 	el.addEventListener('focus', () => { el.dataset['before'] = el.textContent ?? ''; });
 	el.addEventListener('blur', e => {
 		if (!immediate) el.contentEditable = 'false';
-		let value: unknown = el.textContent?.trim() ?? '';
-		if (!value) el.innerHTML = '';
-		if (path.endsWith('.description')) value = value ? [value as string] : [];
-		setPath(state as Record<string, unknown>, path, value);
-		afterBlur(e);
+		const newValue: unknown = el.textContent?.trim() ?? '';
+		if (!newValue) el.innerHTML = '';
+		onCommit(newValue, e);
 	});
 	el.addEventListener('keydown', e => {
 		if (e.key === 'Escape') { el.textContent = el.dataset['before'] ?? ''; el.blur(); }

@@ -1,16 +1,10 @@
-import { state, t } from './app-state';
-import { persist } from './history';
-import { normalizeLinks } from './normalize';
+import type { Store } from './store';
 import { enableDragSort, dragOnlyOutsideText } from './drag-sort';
 import { activateOnInteract } from './text-edit';
+import { t } from './labels';
+import type { LinkEntry } from './types';
 
-type LinkEntry = { platform: string; url: string };
-
-function stateLinks(): LinkEntry[] {
-	return state.links as LinkEntry[];
-}
-
-export function setupConnectEdit(): void {
+export function setupConnectEdit(store: Store): void {
 	const additionalInfo = document.querySelector<HTMLElement>('.additional-info');
 	if (!additionalInfo) return;
 
@@ -18,7 +12,7 @@ export function setupConnectEdit(): void {
 	if (!section) {
 		section = document.createElement('section');
 		section.className = 'connect';
-		section.innerHTML = `<h2 class="section-header" data-label="connect">${t('connect')}</h2>`;
+		section.innerHTML = `<h2 class="section-header" data-label="connect">${t('connect', store.state.language)}</h2>`;
 		const cvGen = additionalInfo.querySelector('.cv-gen');
 		additionalInfo.insertBefore(section, cvGen ?? null);
 	}
@@ -26,11 +20,11 @@ export function setupConnectEdit(): void {
 	function renderLinks(): void {
 		section!.querySelectorAll('.edit-link-row').forEach(el => el.remove());
 		section!.querySelectorAll('a').forEach(a => (a as HTMLElement).style.display = 'none');
-		stateLinks().forEach((_, idx) => section!.appendChild(makeRow(idx)));
+		(store.state.links as LinkEntry[]).forEach((_, idx) => section!.appendChild(makeRow(idx)));
 	}
 
 	function makeRow(idx: number): HTMLElement {
-		const link    = stateLinks()[idx]!;
+		const link    = (store.state.links as LinkEntry[])[idx]!;
 		const isEmpty = !((link.platform ?? '').trim() || (link.url ?? '').trim());
 
 		const row = document.createElement('div');
@@ -44,7 +38,6 @@ export function setupConnectEdit(): void {
 		pEl.textContent = link.platform;
 		pEl.style.cssText = 'min-width:60px;font-weight:bold;';
 		pEl.dataset['placeholderKey'] = 'platform';
-		pEl.setAttribute('data-placeholder', t('platform'));
 		if ((link.platform ?? '').trim()) activateOnInteract(pEl);
 
 		const sep = document.createElement('span');
@@ -56,21 +49,19 @@ export function setupConnectEdit(): void {
 		uEl.textContent = link.url;
 		uEl.style.cssText = 'flex:1;';
 		uEl.dataset['placeholderKey'] = 'url';
-		uEl.setAttribute('data-placeholder', t('url'));
 		if ((link.url ?? '').trim()) activateOnInteract(uEl);
 
 		let saveTimer: ReturnType<typeof setTimeout>;
-		const scheduleSave = () => {
+		const scheduleSave = (): void => {
 			clearTimeout(saveTimer);
 			saveTimer = setTimeout(() => {
 				if (document.activeElement === pEl || document.activeElement === uEl) return;
-				const entry = stateLinks()[idx];
-				if (!entry) return;
-				entry.platform = pEl.textContent?.trim() ?? '';
-				entry.url      = uEl.textContent?.trim() ?? '';
-				normalizeLinks();
-				persist();
-				renderLinks();
+				const newPlatform = pEl.textContent?.trim() ?? '';
+				const newUrl      = uEl.textContent?.trim() ?? '';
+				store.commit(s => {
+					const entry = (s.links as LinkEntry[])[idx];
+					if (entry) { entry.platform = newPlatform; entry.url = newUrl; }
+				}, ['links']);
 			}, 100);
 		};
 
@@ -87,9 +78,8 @@ export function setupConnectEdit(): void {
 	if (!section.dataset['dragInited']) {
 		section.dataset['dragInited'] = '1';
 		enableDragSort(section, '.edit-link-row',
-			stateLinks,
-			v => { state.links = v; },
-			() => { normalizeLinks(); persist(); renderLinks(); },
+			() => store.state.links as LinkEntry[],
+			reordered => store.commit(s => { s.links = reordered; }, ['links']),
 		);
 	}
 

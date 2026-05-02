@@ -8,13 +8,13 @@ export function dragOnlyOutsideText(el: HTMLElement): void {
 export function enableDragSort<T>(
 	container: HTMLElement,
 	itemSelector: string,
-	getList: () => T[],
-	setList: (list: T[]) => void,
-	onChange: () => void,
+	getList: () => readonly T[],
+	onReorder: (newList: T[]) => void,
 	axis: 'v' | 'h' = 'v',
 ): void {
-	let dragKey: string | null   = null;
+	let dragKey: string | null = null;
 	let dropTarget: { key: string; before: boolean } | null = null;
+	let pendingList: T[] | null = null;
 
 	function removeLine(): void { document.getElementById('drop-line')?.remove(); }
 
@@ -50,6 +50,7 @@ export function enableDragSort<T>(
 			.forEach(el => el.classList.add('dragging'));
 		e.dataTransfer!.effectAllowed = 'move';
 		e.dataTransfer!.setData('text/plain', '');
+		pendingList = null;
 	});
 
 	container.addEventListener('dragover', e => {
@@ -86,7 +87,7 @@ export function enableDragSort<T>(
 			const list = [...getList()];
 			const [moved] = list.splice(fromIdx, 1);
 			list.splice(insertAt, 0, moved!);
-			setList(list);
+			pendingList = list;
 		}
 	});
 
@@ -95,7 +96,8 @@ export function enableDragSort<T>(
 		e.stopPropagation();
 		container.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
 		removeLine();
-		dragKey = null; dropTarget = null;
-		onChange();
+		const newList = pendingList;
+		dragKey = null; dropTarget = null; pendingList = null;
+		if (newList) onReorder(newList);
 	});
 }

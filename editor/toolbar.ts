@@ -1,10 +1,12 @@
-import { state, LABELS } from './app-state';
-import { seed, token } from './storage';
-import { persist, performUndo, performRedo, captureSnapshot, trackUndo, restoreSnapshot, saveUndoHistory } from './history';
-import { buildExport, openYamlModal, submitPreview } from './yaml';
+import type { Store } from './store';
+import type { ColorConfig } from './colors';
 import { colorPanel, buildColorPanelContent, buildResetSnapshot } from './colors';
+import { buildExport, openYamlModal, submitPreview } from './yaml';
+import { LABELS } from './labels';
+import { seed, token } from './storage';
+import { updateUndoButtons } from './history';
 
-export function setupToolbar(onRender: () => void): void {
+export function setupToolbar(store: Store, colorCfg: ColorConfig): void {
 	const toolbar = document.createElement('div');
 	toolbar.id = 'edit-toolbar';
 	toolbar.innerHTML = `
@@ -23,39 +25,37 @@ export function setupToolbar(onRender: () => void): void {
 	document.body.style.paddingBottom = toolbar.offsetHeight + 'px';
 
 	if (seed) setupSharePanel(toolbar);
-	if (seed && token) setupSaveButton(toolbar);
-	else setupForkButton(toolbar);
+	if (seed && token) setupSaveButton(toolbar, store, colorCfg);
+	else setupForkButton(toolbar, store, colorCfg);
 
-	buildColorPanelContent();
+	buildColorPanelContent(store, colorCfg.themeKeys);
 	document.body.appendChild(colorPanel);
 
 	document.getElementById('btn-colors')!.addEventListener('click', () => {
 		colorPanel.style.display = colorPanel.style.display === 'flex' ? 'none' : 'flex';
 	});
-	document.getElementById('btn-undo')!.addEventListener('click', performUndo);
-	document.getElementById('btn-redo')!.addEventListener('click', performRedo);
-	document.getElementById('btn-preview')!.addEventListener('click', submitPreview);
-	document.getElementById('btn-export')!.addEventListener('click', openYamlModal);
+	document.getElementById('btn-undo')!.addEventListener('click', () => store.undo());
+	document.getElementById('btn-redo')!.addEventListener('click', () => store.redo());
+	document.getElementById('btn-preview')!.addEventListener('click', () => submitPreview(store, colorCfg));
+	document.getElementById('btn-export')!.addEventListener('click', () => openYamlModal(store, colorCfg));
 
 	const langSelect = document.getElementById('lang-select') as HTMLSelectElement;
-	langSelect.value = state.language;
+	langSelect.value = store.state.language;
 	langSelect.addEventListener('change', () => {
-		state.language = langSelect.value;
-		persist();
-		onRender();
+		store.commit(s => { s.language = langSelect.value; });
 	});
 
 	document.getElementById('btn-reset')!.addEventListener('click', () => {
-		trackUndo(captureSnapshot());
-		restoreSnapshot(buildResetSnapshot());
-		saveUndoHistory();
+		store.replace(buildResetSnapshot(store, colorCfg));
 	});
 
 	document.addEventListener('keydown', e => {
 		if ((document.activeElement as HTMLElement)?.getAttribute('contenteditable') === 'true') return;
-		if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); performUndo(); }
-		if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); performRedo(); }
+		if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); store.undo(); }
+		if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); store.redo(); }
 	});
+
+	updateUndoButtons();
 }
 
 function setupSharePanel(toolbar: HTMLElement): void {
@@ -105,7 +105,7 @@ function makeShareRow(label: string, url: string): HTMLElement {
 	return row;
 }
 
-function setupSaveButton(toolbar: HTMLElement): void {
+function setupSaveButton(toolbar: HTMLElement, store: Store, colorCfg: ColorConfig): void {
 	const btnSave = document.createElement('button');
 	btnSave.id = 'btn-save'; btnSave.textContent = 'Save';
 	toolbar.appendChild(btnSave);
@@ -113,7 +113,7 @@ function setupSaveButton(toolbar: HTMLElement): void {
 	btnSave.addEventListener('click', async () => {
 		btnSave.disabled = true;
 		try {
-			const out  = await buildExport();
+			const out  = await buildExport(store, colorCfg);
 			const resp = await fetch(`/save?seed=${encodeURIComponent(seed!)}&token=${encodeURIComponent(token!)}`, {
 				method:  'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -129,7 +129,7 @@ function setupSaveButton(toolbar: HTMLElement): void {
 	});
 }
 
-function setupForkButton(toolbar: HTMLElement): void {
+function setupForkButton(toolbar: HTMLElement, store: Store, colorCfg: ColorConfig): void {
 	const btnFork = document.createElement('button');
 	btnFork.id = 'btn-fork'; btnFork.textContent = 'Fork';
 	toolbar.appendChild(btnFork);
@@ -137,7 +137,7 @@ function setupForkButton(toolbar: HTMLElement): void {
 	btnFork.addEventListener('click', async () => {
 		btnFork.disabled = true;
 		try {
-			const out  = await buildExport();
+			const out  = await buildExport(store, colorCfg);
 			const resp = await fetch('/fork', {
 				method:  'POST',
 				headers: { 'Content-Type': 'application/json' },

@@ -1,7 +1,6 @@
-import { state } from './app-state';
-import { persist } from './history';
 import { ensureRef, resolvePhotoRef, storePhotoData, photoCache } from './idb';
 import { PHOTO_REF_PREFIX } from './storage';
+import type { Store } from './store';
 
 export const PHOTO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
 	<circle cx="50" cy="50" r="50" fill="var(--white)"/>
@@ -42,23 +41,22 @@ document.addEventListener('drop', () => {
 	document.body.classList.remove('drag-active');
 });
 
-export async function commitPhoto(value: string, name?: string): Promise<void> {
-	state.photo = await ensureRef(value, name);
-	renderPhoto();
-	setTimeout(persist, 0);
+export async function commitPhoto(store: Store, value: string, name?: string): Promise<void> {
+	const ref = await ensureRef(value, name);
+	store.commit(s => { s.photo = ref; }, ['photo']);
 }
 
-export async function renderPhoto(): Promise<void> {
+export async function renderPhoto(store: Store): Promise<void> {
 	const photoDiv = document.querySelector<HTMLElement>('.photo');
 	if (!photoDiv) return;
 	photoDiv.style.cursor = 'pointer';
 	photoDiv.title = 'Click to edit photo, or drop an image';
-	photoDiv.onclick = openPhotoEdit;
-	attachImageDrop(photoDiv, commitPhoto);
-	const ref = state.photo;
+	photoDiv.onclick = () => openPhotoEdit(store);
+	attachImageDrop(photoDiv, (value, name) => commitPhoto(store, value, name));
+	const ref = store.state.photo;
 	if (!ref) { photoDiv.innerHTML = PHOTO_SVG; return; }
 	const record = await resolvePhotoRef(ref);
-	if (state.photo !== ref) return; // stale render guard
+	if (store.state.photo !== ref) return;
 	if (!record?.data) { photoDiv.innerHTML = PHOTO_SVG; return; }
 	const img = document.createElement('img');
 	img.alt = ''; img.width = 400;
@@ -75,7 +73,7 @@ function refToDisplay(ref: string): string {
 	return photoCache.get(hash)?.name ?? hash;
 }
 
-export function openPhotoEdit(): void {
+export function openPhotoEdit(store: Store): void {
 	const modal = document.createElement('div');
 	modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;';
 	modal.innerHTML = `
@@ -94,7 +92,7 @@ export function openPhotoEdit(): void {
 	document.body.classList.add('photo-modal-open');
 
 	const urlEl    = modal.querySelector<HTMLInputElement>('#photo-url')!;
-	let pendingRef = state.photo ?? '';
+	let pendingRef = store.state.photo ?? '';
 	let typedMode  = false;
 
 	resolvePhotoRef(pendingRef).then(() => { urlEl.value = refToDisplay(pendingRef); });
@@ -103,7 +101,7 @@ export function openPhotoEdit(): void {
 	urlEl.addEventListener('input', () => { typedMode = true; });
 
 	attachImageDrop(urlEl, async (value, name) => {
-		typedMode = false;
+		typedMode  = false;
 		pendingRef = value.startsWith('data:') ? await storePhotoData(value, name) : value;
 		urlEl.value = refToDisplay(pendingRef);
 	});
@@ -111,8 +109,8 @@ export function openPhotoEdit(): void {
 	const close = () => { document.body.classList.remove('photo-modal-open'); modal.remove(); };
 	const apply = () => {
 		close();
-		if (typedMode) commitPhoto(urlEl.value.trim());
-		else if (pendingRef !== state.photo) commitPhoto(pendingRef);
+		if (typedMode) commitPhoto(store, urlEl.value.trim());
+		else if (pendingRef !== store.state.photo) commitPhoto(store, pendingRef);
 	};
 
 	urlEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); apply(); } });

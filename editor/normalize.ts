@@ -1,5 +1,4 @@
-import { state } from './app-state';
-import type { ExperienceEntry, EducationEntry, LinkEntry } from './types';
+import type { CVState, ExperienceEntry, EducationEntry, LinkEntry } from './types';
 
 export function isEntryEmpty(entry: unknown): boolean {
 	if (!entry || typeof entry !== 'object') return true;
@@ -33,46 +32,55 @@ const isStringReal  = (s: unknown) => !!(s && String(s).trim());
 const isStringEmpty = (s: unknown) => !s || !String(s).trim();
 const makeEmptyStr  = (): string => '';
 
-export function normalizeInterests(): void {
-	state.interests = normalizeList(state.interests, isStringReal, isStringEmpty, makeEmptyStr);
+export function normalizeInterests(interests: string[]): string[] {
+	return normalizeList(interests ?? [], isStringReal, isStringEmpty, makeEmptyStr);
 }
 
-export function normalizeBadges(idx: number): void {
-	const job = state.experience?.[idx];
-	if (job) job.badges = normalizeList(job.badges, isStringReal, isStringEmpty, makeEmptyStr);
+export function normalizeBadges(badges: string[]): string[] {
+	return normalizeList(badges ?? [], isStringReal, isStringEmpty, makeEmptyStr);
 }
 
-export function normalizeLinks(): void {
-	let arr = state.links as LinkEntry[];
+export function normalizeLinks(links: LinkEntry[] | Record<string, string>): LinkEntry[] {
+	let arr = links as LinkEntry[];
 	if (!Array.isArray(arr) && arr && typeof arr === 'object') {
 		arr = Object.entries(arr as Record<string, string>)
 			.map(([platform, url]) => ({ platform: String(platform ?? ''), url: String(url ?? '') }));
 	}
-	state.links = normalizeList(
-		arr,
+	return normalizeList(
+		arr ?? [],
 		l => !!((l.platform ?? '').trim() && (l.url ?? '').trim()),
 		l => !(l.platform ?? '').trim() && !(l.url ?? '').trim(),
 		() => ({ platform: '', url: '' }),
 	);
 }
 
-export function normalizeExperience(): void {
-	state.experience = normalizeList<ExperienceEntry>(
-		state.experience,
+export function normalizeExperience(experience: ExperienceEntry[]): ExperienceEntry[] {
+	const result = normalizeList<ExperienceEntry>(
+		experience ?? [],
 		e => !!(e.company?.trim() && e.title?.trim()),
 		isEntryEmpty,
 		() => ({ company: '', title: '', start_month: '', start_year: '', end_month: '', end_year: '', description: [], badges: [] }),
 		true,
 	);
-	for (const i of state.experience.keys()) normalizeBadges(i);
+	return result.map(e => ({ ...e, badges: normalizeBadges(e.badges) }));
 }
 
-export function normalizeEducation(): void {
-	state.education = normalizeList<EducationEntry>(
-		state.education,
+export function normalizeEducation(education: EducationEntry[]): EducationEntry[] {
+	return normalizeList<EducationEntry>(
+		education ?? [],
 		e => !!(e.institution?.trim() && e.title?.trim()),
 		isEntryEmpty,
 		() => ({ institution: '', title: '', subinstitution: '', start_month: '', start_year: '', end_month: '', end_year: '', description: [] }),
 		true,
 	);
+}
+
+export function normalizeAll(state: CVState): CVState {
+	return {
+		...state,
+		interests:  normalizeInterests(state.interests),
+		links:      normalizeLinks(state.links as LinkEntry[]),
+		experience: normalizeExperience(state.experience),
+		education:  normalizeEducation(state.education),
+	};
 }

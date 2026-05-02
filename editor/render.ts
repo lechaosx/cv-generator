@@ -1,17 +1,15 @@
-import { state, LABELS, t, updateLabels } from './app-state';
-import { persist } from './history';
-import { normalizeInterests, normalizeLinks, normalizeExperience, normalizeEducation } from './normalize';
+import type { Store } from './store';
+import { t, LABELS } from './labels';
 import { setupEditable } from './text-edit';
-import { getPath } from './paths';
 import { makeStringList } from './lists';
 import { renderPhoto } from './photo';
 import { setupConnectEdit } from './links';
 import { renderExperienceTimeline, renderEducationTimeline } from './timeline';
-import { updateYamlModalIfOpen } from './yaml';
+import type { CVState } from './types';
 
-type FieldTuple = [getter: () => Element | null, path: string, placeholderKey: string];
+type FieldDef = [getter: () => Element | null, field: keyof CVState, placeholderKey: string];
 
-const FIELD_MAP: FieldTuple[] = [
+const FIELD_MAP: FieldDef[] = [
 	[() => document.querySelectorAll('.main-info .title')[0] ?? null, 'title_before_name', 'title'],
 	[() => document.querySelector('h1'),                              'name',              'full_name'],
 	[() => document.querySelectorAll('.main-info .title')[1] ?? null, 'title_after_name',  'title'],
@@ -22,50 +20,67 @@ const FIELD_MAP: FieldTuple[] = [
 	[() => document.querySelector('.additional-info section:first-child p'), 'description', 'description'],
 ];
 
-function renderStatic(): void {
-	for (const [getter, path, placeholderKey] of FIELD_MAP) {
+function renderStatic(store: Store): void {
+	for (const [getter, field, ph] of FIELD_MAP) {
 		const el = getter() as HTMLElement | null;
 		if (!el) continue;
+		const v = store.state[field];
 		if (!el.classList.contains('cv-field')) {
-			setupEditable(el, path, placeholderKey);
+			setupEditable(el, v, ph, (newVal) => {
+				store.commit(s => {
+					(s as Record<string, unknown>)[field as string] =
+						ph === 'description' ? (newVal ? [newVal as string] : []) : newVal;
+				});
+			});
 		} else {
-			el.dataset['placeholderKey'] = placeholderKey;
-			el.setAttribute('data-placeholder', t(placeholderKey));
-			const v = getPath(state as Record<string, unknown>, path);
+			el.dataset['placeholderKey'] = ph;
 			el.innerHTML = '';
 			if (v != null && v !== '') el.textContent = Array.isArray(v) ? v.join(' ') : String(v);
 		}
 	}
 }
 
-function renderInterests(): void {
+function renderInterests(store: Store): void {
 	const section = document.querySelector<HTMLElement>('.additional-info section:nth-child(2)');
 	if (!section) return;
-	let interestsEl = section.querySelector<HTMLElement>('.badge-list');
-	if (!interestsEl) {
+	let el = section.querySelector<HTMLElement>('.badge-list');
+	if (!el) {
 		const p = section.querySelector('p');
 		if (!p) return;
-		interestsEl = document.createElement('div');
-		interestsEl.className = 'badge-list';
-		p.replaceWith(interestsEl);
+		el = document.createElement('div');
+		el.className = 'badge-list';
+		p.replaceWith(el);
 	}
-	makeStringList(interestsEl,
-		() => state.interests,
-		v  => { state.interests = v; },
-		() => normalizeInterests(),
+	makeStringList(
+		el,
+		() => store.state.interests,
+		v => store.commit(s => { s.interests = v; }, ['interests']),
+		v => store.commit(s => { s.interests = v; }, null),
 		'interest',
 	);
 }
 
-export function render(): void {
-	if (!state.language || !LABELS[state.language]) state.language = 'en';
-	normalizeInterests(); normalizeLinks(); normalizeExperience(); normalizeEducation();
-	renderStatic();
-	renderPhoto();
-	renderInterests();
-	setupConnectEdit();
-	renderExperienceTimeline();
-	renderEducationTimeline();
-	updateLabels();
-	updateYamlModalIfOpen();
+export function updateLabels(language: string): void {
+	document.querySelectorAll<HTMLElement>('[data-label]').forEach(el => {
+		el.textContent = t(el.dataset['label']!, language);
+	});
+	document.querySelectorAll<HTMLElement>('[data-placeholder-key]').forEach(el => {
+		el.setAttribute('data-placeholder', t(el.dataset['placeholderKey']!, language));
+	});
+	document.documentElement.lang = language;
+	const ls = document.getElementById('lang-select') as HTMLSelectElement | null;
+	if (ls && ls.value !== language) ls.value = language;
+}
+
+export function render(store: Store): void {
+	if (!store.state.language || !LABELS[store.state.language]) {
+		store.commit(s => { s.language = 'en'; }, null);
+	}
+	renderStatic(store);
+	renderPhoto(store);
+	renderInterests(store);
+	setupConnectEdit(store);
+	renderExperienceTimeline(store);
+	renderEducationTimeline(store);
+	updateLabels(store.state.language);
 }
