@@ -10,8 +10,8 @@ export const PHOTO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1
 
 export function attachImageDrop(el: HTMLElement | HTMLInputElement, onResult: (value: string, name?: string) => void): void {
 	el.classList.add('drop-target');
-	el.ondragenter = e => { e.preventDefault(); e.stopPropagation(); el.classList.add('dropping'); };
-	el.ondragover  = e => { e.preventDefault(); e.stopPropagation(); };
+	el.ondragenter = e => { if (!e.dataTransfer?.types.includes('Files')) return; e.preventDefault(); e.stopPropagation(); el.classList.add('dropping'); };
+	el.ondragover  = e => { if (!e.dataTransfer?.types.includes('Files')) return; e.preventDefault(); e.stopPropagation(); };
 	el.ondragleave = e => { if (!el.contains(e.relatedTarget as Node)) el.classList.remove('dropping'); };
 	el.ondrop = e => {
 		e.preventDefault(); e.stopPropagation();
@@ -30,16 +30,17 @@ export function attachImageDrop(el: HTMLElement | HTMLInputElement, onResult: (v
 	};
 }
 
-let dragActiveTimer: ReturnType<typeof setTimeout>;
-document.addEventListener('dragover', () => {
-	document.body.classList.add('drag-active');
-	clearTimeout(dragActiveTimer);
-	dragActiveTimer = setTimeout(() => document.body.classList.remove('drag-active'), 100);
+document.addEventListener('dragenter', e => {
+	if (e.dataTransfer?.types.includes('Files'))
+		document.body.classList.add('drag-active');
+}, true);
+document.addEventListener('dragleave', e => {
+	if (e.relatedTarget === null)
+		document.body.classList.remove('drag-active');
 }, true);
 document.addEventListener('drop', () => {
-	clearTimeout(dragActiveTimer);
 	document.body.classList.remove('drag-active');
-});
+}, true);
 
 export async function commitPhoto(store: Store, value: string, name?: string): Promise<void> {
 	const ref = await ensureRef(value, name);
