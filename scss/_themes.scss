@@ -1,0 +1,19 @@
+@mixin apply-theme($suffix) {
+	@each $t in panel, text, link, name, position, header, header-border, border, icon, timeline, badge, badge-text, button, button-text {
+		--#{$t}: var(--#{$t}-#{$suffix});
+	}
+}
+
+// Default: dark panels
+main > * { @include apply-theme(dark); }
+
+// Single-column light preference
+@media (prefers-color-scheme: light) {
+	main > * { @include apply-theme(light); }
+}
+
+// Two-column desktop/print: odd (left) = dark, even (right) = light
+@media (min-width: 80rem), print {
+	main > :nth-child(2n + 1) { @include apply-theme(dark); }
+	main > :nth-child(2n)     { @include apply-theme(light); }
+}

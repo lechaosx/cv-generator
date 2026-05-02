@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
+
+:root {
+	/* Base palette */
+	--background: #2a2a2e;
+	--dark:        #283649;
+	--light:       #9c7843;
+	--white:       #ffffff;
+	--black:       #000000;
+
+	/* Panel backgrounds */
+	--panel-dark:  var(--dark);
+	--panel-light: var(--white);
+
+	/* Component token pairs — dark and light variants */
+	--text-dark:          var(--white);  --text-light:          var(--black);
+	--link-dark:          var(--white);  --link-light:          var(--black);
+	--name-dark:          var(--white);  --name-light:          var(--dark);
+	--position-dark:      var(--light);  --position-light:      var(--light);
+	--header-dark:        var(--light);  --header-light:        var(--black);
+	--header-border-dark: var(--white);  --header-border-light: var(--black);
+	--border-dark:        var(--light);  --border-light:        var(--light);
+	--icon-dark:          var(--light);  --icon-light:          var(--light);
+	--timeline-dark:      var(--light);  --timeline-light:      var(--light);
+	--badge-dark:         var(--light);  --badge-light:         var(--light);
+	--badge-text-dark:    var(--white);  --badge-text-light:    var(--white);
+	--button-dark:        var(--light);  --button-light:        var(--light);
+	--button-text-dark:   var(--black);  --button-text-light:   var(--black);
+
+	--normal-font:    "Roboto", sans-serif;
+	--condensed-font: "Roboto Condensed", sans-serif;
+	--mono-font:      "Roboto Mono", sans-serif;
+}

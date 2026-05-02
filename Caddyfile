@@ -3,5 +3,9 @@
 		rewrite * /edit.js
 		reverse_proxy ts-builder:9001
 	}
+	handle /static/style.css {
+		rewrite * /style.css
+		reverse_proxy ts-builder:9001
+	}
 	reverse_proxy backend:5000
 }

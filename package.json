@@ -2,11 +2,15 @@
   "name": "cv-generator-editor",
   "private": true,
   "scripts": {
-    "build": "esbuild editor/index.ts --bundle --outfile=server/static/edit.js --platform=browser --target=es2022 --define:DEBUG=false",
-    "serve": "esbuild editor/index.ts --bundle --serve=0.0.0.0:9001 --outfile=/tmp/edit.js --platform=browser --target=es2022 --define:DEBUG=true"
+    "build":     "esbuild editor/index.ts --bundle --outfile=server/static/edit.js --platform=browser --target=es2022 --define:DEBUG=false",
+    "build:css": "sass scss/style.scss server/static/style.css --style=compressed --no-source-map",
+    "serve":     "node build.mjs"
   },
   "devDependencies": {
-    "esbuild": "^0.24.2",
-    "typescript": "^5.7.3"
+    "esbuild":             "^0.28.0",
+    "esbuild-sass-plugin": "^3.7.0",
+    "sass":                "^1.97.3",
+    "sass-embedded":       "^1.97.3",
+    "typescript":          "^5.7.3"
   }
 }
