@@ -124,6 +124,7 @@ def load_cv(path_or_url):
 				data['photo'] = f"data:{mime};base64,{base64.b64encode(f.read()).decode()}"
 	return data
 
+
 def load_domains():
 	if not DOMAINS_CONFIG:
 		return {}
@@ -142,6 +143,43 @@ cache = diskcache.Cache(os.getenv('SEEDS_DIR', '/data/seeds'))
 @app.route("/healthz")
 def healthz():
 	return ("ok", 200)
+
+
+@app.route("/photo")
+def photo():
+	seed = flask.request.args.get('seed')
+	url  = flask.request.args.get('url')
+
+	if seed:
+		data, _ = get_seeded_cv(seed)
+	elif url:
+		data, _ = fetch_yaml_cv(url)
+	else:
+		host   = flask.request.host.split(':')[0]
+		source = domains.get(host) or DEFAULT_CV
+		data   = load_cv(source) if source else None
+
+	if not data:
+		flask.abort(404)
+
+	photo_val = (data.get('photo') or '').strip()
+	if not photo_val:
+		flask.abort(404)
+
+	if not photo_val.startswith('data:'):
+		return flask.redirect(photo_val)
+
+	try:
+		header, encoded = photo_val.split(',', 1)
+		mime = header.split(':')[1].split(';')[0]
+		image_data = base64.b64decode(encoded)
+	except Exception:
+		flask.abort(422)
+
+	resp = flask.make_response(image_data)
+	resp.headers['Content-Type'] = mime
+	resp.headers['Cache-Control'] = 'public, max-age=3600'
+	return resp
 
 
 @app.route("/check-domain")
@@ -195,6 +233,7 @@ def edit():
 		source = domains.get(host) or DEFAULT_CV
 		data   = load_cv(source) if source else None
 
+	if data and data.get('photo'): data['photo'] = f'/photo?{flask.request.query_string.decode()}'.rstrip('?')
 	return flask.render_template('cv.html', data=data, url=url or '', seed=seed or '', error=None, edit_mode=True)
 
 
@@ -221,15 +260,15 @@ def index():
 
 	if url:
 		data, error = fetch_yaml_cv(url)
-		return flask.render_template('cv.html', data=data, url=url, seed='', error=error, edit_mode=False)
-
-	if seed:
+	elif seed:
 		data, error = get_seeded_cv(seed)
-		return flask.render_template('cv.html', data=data, url='', seed=seed, error=error, edit_mode=False)
+	else:
+		host  = flask.request.host.split(':')[0]
+		data  = load_cv(source) if (source := domains.get(host) or DEFAULT_CV) else None
+		error = None
 
-	host  = flask.request.host.split(':')[0]
-	data  = load_cv(source) if (source := domains.get(host) or DEFAULT_CV) else None
-	return flask.render_template('cv.html', data=data, url='', seed='', error=None, edit_mode=False)
+	if data and data.get('photo'): data['photo'] = f'/photo?{flask.request.query_string.decode()}'.rstrip('?')
+	return flask.render_template('cv.html', data=data, url=url or '', seed=seed or '', error=error, edit_mode=False)
 
 
 def fetch_yaml_cv(url):
