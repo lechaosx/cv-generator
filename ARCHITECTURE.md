@@ -2,7 +2,7 @@
 
 ## Stack
 
-- **Frontend**: TypeScript compiled with esbuild, vanilla DOM, no framework
+- **Frontend**: TypeScript compiled with esbuild, Sass/SCSS compiled by `sass` (production) or `esbuild-sass-plugin` (dev server), vanilla DOM, no framework
 - **Backend**: Python/Flask, Jinja2 templates, diskcache, Gunicorn
 - **Infrastructure**: Docker Compose, Caddy reverse proxy, GitHub Actions
 
@@ -75,7 +75,7 @@ Text fields use `''` as the null object. `null`/`undefined` are handled at the b
 
 ### Explicit passing — no implicit global reads
 
-If a function needs state or a commit callback, it receives them as parameters. Modules in layers 0–2 have no knowledge of `Store`, `history`, or `persistence`.
+If a function needs state or a commit callback, it receives them as parameters. Modules in layers 0–2 do not access `Store`, `history`, or `persistence` as singletons. `import type { Store }` for function-signature annotations is permitted — it is erased at compile time and creates no runtime coupling.
 
 ### Side effects at outer layers
 
@@ -152,6 +152,10 @@ store.setColorRebuilder(fn): void
 store.addObserver(fn): void          // called after every commit
 store.initColorState(colors, links): void
 store.setColorConfig(themeKeys, baseLinks): void
+
+// Snapshot utilities (used by index.ts to seed last-saved state)
+store.snapshot(): UndoSnapshot       // capture current state + colors
+store.setLastSaved(snap): void       // mark a snapshot as the last persisted baseline
 ```
 
 ---

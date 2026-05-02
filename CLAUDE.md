@@ -6,8 +6,9 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full layer diagram, data flow, 
 
 ```bash
 nix run nixpkgs#nodejs -- node_modules/.bin/tsc --noEmit   # type-check
-npm run build                                               # production build
-npm run serve                                               # dev server on :9001
+npm run build                                               # compile TypeScript → server/static/edit.js
+npm run build:css                                           # compile SCSS → server/static/style.css
+npm run serve                                               # dev server on :9001 (esbuild serves TS + SCSS in-memory)
 docker compose up                                           # full stack on :80
 ```
 
@@ -23,7 +24,7 @@ Things that always warrant a doc update: adding/removing a layer or module, chan
 
 **Normalize functions are pure.** `normalize.ts` functions take values and return values — no global reads or writes. `normalizeAll` is called inside every `store.commit` and in the `Store` constructor. `normalizeTimeline` is also where YAML coercion happens (`company`/`institution` → `organization`).
 
-**UI components do not import `store`, `history`, or `persistence`.** Layers 0–2 (`text-edit`, `lists`, `timeline`, `links`, `drag-sort`) receive data and callbacks as parameters only. If a module needs to trigger persistence, it does so through a callback injected from above.
+**UI components do not access `store`, `history`, or `persistence` as singletons.** Layers 0–2 (`text-edit`, `lists`, `timeline`, `links`, `drag-sort`) receive data and callbacks as parameters only. `import type { Store }` for function-signature annotations is fine — it is erased at compile time and creates no runtime coupling. If a module needs to trigger persistence, it does so through a callback injected from above.
 
 **No import cycles.** If adding an import creates a cycle, the module boundaries are wrong. Either the modules need merging, or a third module should own the shared dependency.
 
