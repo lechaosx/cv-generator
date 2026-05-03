@@ -16,13 +16,13 @@ FROM base AS dev
 
 CMD uv run flask --app server/app.py --debug run --host=0.0.0.0
 
-FROM node:22-alpine AS ts-build
+FROM oven/bun:alpine AS ts-build
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm install
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 COPY editor ./editor
 COPY scss    ./scss
-RUN npm run build && npm run build:css
+RUN bun run build && bun run build:css
 
 FROM base AS prod
 

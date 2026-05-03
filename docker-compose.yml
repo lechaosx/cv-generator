@@ -13,13 +13,13 @@ services:
       - diskcache:/data
 
   ts-builder:
-    image: node:22-alpine
+    image: oven/bun:alpine
     working_dir: /app
     stdin_open: true
     volumes:
       - .:/app
       - /app/node_modules
-    command: sh -c "npm install && npm run serve"
+    command: sh -c "bun install && bun run serve"
 
   caddy:
     image: caddy:alpine

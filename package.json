@@ -4,7 +4,7 @@
   "scripts": {
     "build":     "esbuild editor/index.ts --bundle --outfile=server/static/edit.js --platform=browser --target=es2022 --define:DEBUG=false",
     "build:css": "sass scss/style.scss server/static/style.css --style=compressed --no-source-map",
-    "serve":     "node build.mjs"
+    "serve":     "bun build.mjs"
   },
   "devDependencies": {
     "esbuild":             "^0.28.0",
